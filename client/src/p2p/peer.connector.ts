@@ -81,8 +81,10 @@ export class PeerConnector extends EventHandler<PeerEventMap> {
 
   private createPeer(peerAddress: string) {
     const peer = new Peer({
-      ...this.params,
+      address: this.params.address,
       peerAddress,
+      signal: this.params.signal,
+      iceServers: this.params.iceServers,
     })
     peer.on('connecting', message => this.trigger('connecting', message))
     peer.on('connected', message => this.trigger('connected', message))

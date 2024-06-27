@@ -2,6 +2,7 @@ import { Peer } from '@/p2p/peer'
 
 export interface KeyPair {
   key: string
+  publicKey: string
   address: string
 }
 
@@ -13,6 +14,7 @@ export interface SignalMessageParams<T> {
 export interface SignalMessage<T> {
   sender: string
   recipient: string
+  roomAddress: string
   data: T
 }
 

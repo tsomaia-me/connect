@@ -12,12 +12,12 @@ const ICE_SERVERS = [
   }
 ]
 
-export default function ConnectContainer() {
+export default function ConnectContainer({ address }: { address?: string }) {
   return (
     <KeyPairProvider>
       <SignalProvider url={SIGNAL_URL}>
         <PeerConnectorProvider iceServers={ICE_SERVERS}>
-          <Connect/>
+          {address && <Connect address={address}/>}
         </PeerConnectorProvider>
       </SignalProvider>
     </KeyPairProvider>

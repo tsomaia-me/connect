@@ -5,6 +5,7 @@ import { EventHandler } from '@/p2p/event.handler'
 export interface SignalParams {
   url: string
   address: string
+  roomAddress: string
 }
 
 export interface SignalEventMap {
@@ -18,6 +19,7 @@ export interface SignalEventMap {
 
 export class Signal extends EventHandler<SignalEventMap> {
   private address: string
+  private roomAddress: string
   private url: string
   private connection: io.Socket | null = null
   private listeners: Map<string, Function[]> = new Map()
@@ -25,6 +27,7 @@ export class Signal extends EventHandler<SignalEventMap> {
   constructor(params: SignalParams) {
     super()
     this.address = params.address
+    this.roomAddress = params.roomAddress
     this.url = params.url
     this.onConnect = this.onConnect.bind(this)
     this.onDisconnect = this.onDisconnect.bind(this)
@@ -58,6 +61,7 @@ export class Signal extends EventHandler<SignalEventMap> {
     if (this.connection) {
       this.connection.emit('online', {
         sender: this.address,
+        roomAddress: this.roomAddress,
       })
     }
   }
@@ -67,6 +71,7 @@ export class Signal extends EventHandler<SignalEventMap> {
       this.connection.emit('candidate', {
         ...message,
         sender: this.address,
+        roomAddress: this.roomAddress,
       })
     }
   }
@@ -76,6 +81,7 @@ export class Signal extends EventHandler<SignalEventMap> {
       this.connection.emit('offer', {
         ...message,
         sender: this.address,
+        roomAddress: this.roomAddress,
       })
     }
   }
@@ -85,6 +91,7 @@ export class Signal extends EventHandler<SignalEventMap> {
       this.connection.emit('answer', {
         ...message,
         sender: this.address,
+        roomAddress: this.roomAddress,
       })
     }
   }

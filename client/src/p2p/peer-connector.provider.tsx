@@ -3,10 +3,11 @@ import { PeerConnector } from './peer.connector'
 import { Signal } from './signal'
 import { useSignal } from '@/p2p/signal.provider'
 import { useAddress } from '@/p2p/keypair.provider'
+import { useParams, useRouter } from 'next/navigation'
 
 const PeerConnectorContext = createContext(new PeerConnector({
   address: '',
-  signal: new Signal({ url: '', address: '' }),
+  signal: new Signal({ url: '', address: '', roomAddress: '' }),
   iceServers: [],
 }))
 
