@@ -1,6 +1,6 @@
-import { Signal } from '@/p2p/signal'
-import { PeerConnectionStateChangedEvent, PeerEvent, PeerMessageEvent, SignalMessage } from '@/p2p/types'
-import { EventHandler } from '@/p2p/event.handler'
+import { Signal } from 'p2p/signal'
+import { PeerConnectionStateChangedEvent, PeerEvent, PeerMessageEvent, SignalMessage } from 'p2p/types'
+import { EventHandler } from 'p2p/event.handler'
 import { ec as EC } from 'elliptic'
 import * as crypto from 'crypto'
 

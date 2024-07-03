@@ -1,6 +1,6 @@
 import * as io from 'socket.io-client'
-import { SignalMessage, SignalMessageParams } from '@/p2p/types'
-import { EventHandler } from '@/p2p/event.handler'
+import { SignalMessage, SignalMessageParams } from 'p2p/types'
+import { EventHandler } from 'p2p/event.handler'
 
 export interface SignalParams {
   url: string

@@ -1,13 +1,13 @@
 'use client'
 
-import { useAuth } from '@/api/auth/hooks'
-import { Input, useField } from '@/shared/Field'
-import { Button } from '@/shared/Button'
-import { Form } from '@/shared/Form'
+import { useAuth } from 'client/src/api/auth/hooks'
+import { Input, useField } from 'client/src/shared/Field'
+import { Button } from 'client/src/shared/Button'
+import { Form } from 'client/src/shared/Form'
 
 export default function Login() {
-  const username = useField('')
-  const password = useField('')
+  const username = useField<string>('')
+  const password = useField<string>('')
   const auth = useAuth()
 
   return (

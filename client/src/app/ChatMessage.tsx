@@ -1,14 +1,16 @@
 import classNames from 'classnames'
-import { PeerMessageEvent } from '@/p2p/types'
 
 export interface ChatMessageProps {
-  address: string
-  message: PeerMessageEvent
+  clientId: number
+  message: {
+    senderId: number
+    message: string
+  }
 }
 
 export function ChatMessage(props: ChatMessageProps) {
-  const { address, message } = props
-  const isLocal = message.sender === address
+  const { clientId, message } = props
+  const isLocal = message.senderId === clientId
   const variant: 'primary' | 'secondary' = isLocal ? 'secondary' : 'primary'
   const variants = {
     primary: {
@@ -56,7 +58,7 @@ export function ChatMessage(props: ChatMessageProps) {
           {/*</div>*/}
 
           <p className={classNames('text-sm font-normal py-2.5', variants.content)}>
-            {message.data}
+            {message.message}
           </p>
 
           {/*{isLocal && (*/}

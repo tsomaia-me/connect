@@ -1,9 +1,9 @@
 'use client'
 
-import Connect from '@/app/Connect'
-import { SignalProvider } from '@/p2p/signal.provider'
-import { PeerConnectorProvider } from '@/p2p/peer-connector.provider'
-import { KeyPairProvider } from '@/p2p/keypair.provider'
+import Connect from 'p2p/Connect'
+import { SignalProvider } from './signal.provider'
+import { PeerConnectorProvider } from './peer-connector.provider'
+import { KeyPairProvider } from './keypair.provider'
 
 const SIGNAL_URL = 'http://192.168.50.176:8080'
 const ICE_SERVERS = [

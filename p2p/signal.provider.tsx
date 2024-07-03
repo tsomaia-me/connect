@@ -1,6 +1,6 @@
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo } from 'react'
-import { Signal } from '@/p2p/signal'
-import { useAddress } from '@/p2p/keypair.provider'
+import { Signal } from 'p2p/signal'
+import { useAddress } from 'p2p/keypair.provider'
 import { useParams, useRouter } from 'next/navigation'
 
 const SignalContext = createContext(

@@ -1,4 +1,4 @@
-import { Peer } from '@/p2p/peer'
+import { Peer } from 'p2p/peer'
 
 export interface KeyPair {
   key: string

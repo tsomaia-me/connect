@@ -1,6 +1,6 @@
 'use client'
 
-import ConnectContainer from '@/app/ConnectContainer'
+import ConnectContainer from '../../ConnectContainer'
 
 export default function RoomPage({ params }: { params: { address: string }}) {
   return (

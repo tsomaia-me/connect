@@ -1,7 +1,7 @@
-import { Signal } from '@/p2p/signal'
-import { PeerConnectionStateChangedEvent, PeerEvent, PeerMessageEvent, SignalMessage } from '@/p2p/types'
-import { EventHandler } from '@/p2p/event.handler'
-import { Peer } from '@/p2p/peer'
+import { Signal } from 'p2p/signal'
+import { PeerConnectionStateChangedEvent, PeerEvent, PeerMessageEvent, SignalMessage } from 'p2p/types'
+import { EventHandler } from 'p2p/event.handler'
+import { Peer } from 'p2p/peer'
 
 export interface PeerConnectorParams {
   address: string
