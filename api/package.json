@@ -48,7 +48,8 @@
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.5",
     "speakeasy": "^2.0.0",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -78,7 +79,8 @@
     "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.1.3"
+    "typescript": "^5.1.3",
+    "@types/uuid": "^10.0.0"
   },
   "jest": {
     "moduleFileExtensions": [

@@ -1,4 +1,13 @@
 import * as io from 'socket.io-client'
+import {
+  AnswerSignal,
+  IceCandidateSignal,
+  JoinedRoomSignal,
+  JoinRoomSignal,
+  OfferSignal,
+  Room,
+  RoomUpdatedSignal
+} from '@/app.models'
 
 export interface PingMessage {
   type: 'ping'
@@ -15,108 +24,21 @@ export interface TextMessage {
 
 export type PeerMessage = PingMessage | PongMessage | TextMessage
 
-export interface ConnectedSignal {
-  type: 'connected'
-  clientId: number
-}
-
-export interface CreateRoomSignal {
-  type: 'create-room'
-}
-
-export interface CreateRoomSuccessSignal {
-  type: 'create-room-success'
-  room: Room
-}
-
-export interface CreateRoomFailureSignal {
-  type: 'create-room-failure'
-  roomId: number
-}
-
-export interface JoinRoomSignal {
-  type: 'join-room'
-  roomId: number
-}
-
-export interface JoinRoomSuccessSignal {
-  type: 'join-room-success'
-  room: Room
-}
-
-export interface JoinRoomFailureSignal {
-  type: 'join-room-failure'
-  roomId: number
-  reason: string
-}
-
-export interface JoinRequestSignal {
-  type: 'join-request'
-  peerId: number
-}
-
-export interface RoomUpdatedSignal {
-  type: 'room-updated'
-  room: Room
-}
-
-export interface OfferSignal {
-  type: 'offer'
-  senderId: number
-  receiverId: number
-  data: RTCSessionDescriptionInit
-}
-
-export interface AnswerSignal {
-  type: 'answer'
-  senderId: number
-  receiverId: number
-  data: RTCSessionDescriptionInit
-}
-
-export interface IceCandidateSignal {
-  type: 'icecandidate'
-  senderId: number
-  receiverId: number
-  data: RTCIceCandidate
-}
-
-export type ForwardSignal =
-  | OfferSignal
-  | AnswerSignal
-  | IceCandidateSignal
-
-export type Signal =
-  | ConnectedSignal
-  | CreateRoomSignal
-  | CreateRoomSuccessSignal
-  | CreateRoomFailureSignal
-  | JoinRoomSignal
-  | JoinRoomSuccessSignal
-  | JoinRoomFailureSignal
-  | JoinRequestSignal
-  | RoomUpdatedSignal
-  | ForwardSignal
-
 export type Callback<T> = (data: T) => void
 
 export interface SignalerEventMap {
-  connected: ConnectedSignal
-  'create-room': CreateRoomSignal
-  'create-room-success': CreateRoomSuccessSignal
-  'create-room-failure': CreateRoomFailureSignal
-  'join-room': JoinRoomSignal
-  'join-room-success': JoinRoomSuccessSignal
-  'join-room-failure': JoinRoomFailureSignal
-  'room-updated': RoomUpdatedSignal
-  'join-request': JoinRequestSignal
+  join_room: JoinRoomSignal
+  joined_room: JoinedRoomSignal
+  room_updated: RoomUpdatedSignal
   offer: OfferSignal
   answer: AnswerSignal
   icecandidate: IceCandidateSignal
 }
 
 export interface Signaler extends EventHandler<SignalerEventMap> {
-  send(signal: Signal): void
+  send<E extends keyof SignalerEventMap>(event: E, signal: SignalerEventMap[E]): void
+
+  close(): void
 }
 
 const ICE_SERVERS = [
@@ -149,6 +71,9 @@ export class EventHandler<EventMap> {
   }
 }
 
+export class DummySignaler extends EventHandler<SignalerEventMap> implements Signaler {
+}
+
 export class WebSocketSignaler extends EventHandler<SignalerEventMap> implements Signaler {
   private connection: io.Socket
 
@@ -160,17 +85,12 @@ export class WebSocketSignaler extends EventHandler<SignalerEventMap> implements
     })
   }
 
-  send(signal: Signal) {
-    this.connection.emit('signal', signal)
+  send<E extends keyof SignalerEventMap>(event: E, signal: SignalerEventMap[E]) {
+    this.connection.emit(event, signal)
   }
-}
 
-export class Room {
-  public id: number
-  public hostId: number
-  public participants: number[]
-
-  constructor() {
+  close() {
+    this.connection.close()
   }
 }
 
@@ -179,7 +99,7 @@ export class Peer extends EventHandler<{}> {
   public readonly channel = new PeerChannel()
 
   constructor(
-    public readonly id: number,
+    public readonly id: string,
     public readonly connection: RTCPeerConnection,
   ) {
     super()
@@ -261,12 +181,11 @@ export interface PeerNetworkEventMap {
 }
 
 export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
-  public senderId = -1
-  private peers = new Map<number, Peer>()
+  public senderId: string
+  private peers = new Map<string, Peer>()
 
   constructor(private readonly signaler: Signaler) {
     super()
-    this.acceptIncomingConnections()
   }
 
   getPeers() {
@@ -284,7 +203,7 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
     })
   }
 
-  connectTo(peerId: number) {
+  connectTo(peerId: string) {
     const peer = this.createPeer(peerId)
     peer.channel.attachRtcDataChannel(peer.connection.createDataChannel('default'))
     peer.channel.on('ping', () => {
@@ -298,10 +217,9 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
 
       const offer = await peer.connection.createOffer()
       await peer.connection.setLocalDescription(offer)
-      this.signaler.send({
+      this.signaler.send('offer', {
         senderId: this.senderId,
         receiverId: peerId,
-        type: 'offer',
         data: offer,
       })
     })
@@ -312,22 +230,21 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
     })
   }
 
-  private createPeer(peerId: number): Peer {
+  private createPeer(peerId: string): Peer {
     if (this.peers.has(peerId)) {
       throw new Error(`Peer with the following ID already exists: ${peerId}`)
     }
 
     const peerConnection = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
-    });
+    })
     const peer: Peer = new Peer(peerId, peerConnection)
 
     peer.connection.addEventListener('icecandidate', event => {
       if (event.candidate) {
-        this.signaler.send({
+        this.signaler.send('icecandidate', {
           senderId: this.senderId,
           receiverId: peerId,
-          type: 'icecandidate',
           data: event.candidate,
         })
       }
@@ -345,7 +262,7 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
     return peer
   }
 
-  private acceptIncomingConnections() {
+  acceptIncomingConnections() {
     this.signaler.on('offer', async offer => {
       const peer = this.createPeer(offer.senderId)
 
@@ -364,10 +281,9 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
       const answer = await peer.connection.createAnswer()
       await peer.connection.setLocalDescription(answer)
 
-      this.signaler.send({
+      this.signaler.send('answer', {
         senderId: this.senderId,
         receiverId: offer.senderId,
-        type: 'answer',
         data: answer,
       })
     })
@@ -378,6 +294,12 @@ export class PeerNetwork extends EventHandler<PeerNetworkEventMap> {
       if (peer) {
         await peer.connection.addIceCandidate(iceCandidate.data)
       }
+    })
+  }
+
+  close() {
+    this.peers.forEach(peer => {
+      peer.close()
     })
   }
 }

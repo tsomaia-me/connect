@@ -8,7 +8,7 @@ import { Button } from '@/shared/Button'
 import { ChatMessage } from '@/app/ChatMessage'
 import * as net from 'net'
 
-const SIGNALING_SERVER_URL = 'http://192.168.50.176:8080'
+const SIGNALING_SERVER_URL = 'http://localhost:8080'
 
 export default function HomePage() {
   const signalerRef = useRef<Signaler | null>(null)
@@ -35,7 +35,7 @@ export default function HomePage() {
       setRoom(signal.room)
     })
 
-    signaler.on('join-room-success', signal => {
+    signaler.on('join_room-success', signal => {
       setRoom(signal.room)
     })
 
@@ -43,11 +43,11 @@ export default function HomePage() {
       alert('Failed to create a room')
     })
 
-    signaler.on('join-room-failure', signal => {
+    signaler.on('join_room-failure', signal => {
       alert(`Failed to join a room #${signal.roomId}: ${signal.reason}`)
     })
 
-    signaler.on('join-request', signal => {
+    signaler.on('join_request', signal => {
       console.log('New peer joined', signal.peerId)
       network.connectTo(signal.peerId)
     })
@@ -78,7 +78,7 @@ export default function HomePage() {
   const joinRoom = () => {
     if (parseInt(roomId.value)) {
       signalerRef.current?.send({
-        type: 'join-room',
+        type: 'join_room',
         roomId: Number(roomId.value),
       })
     }
