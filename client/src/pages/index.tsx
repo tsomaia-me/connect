@@ -47,14 +47,27 @@ export default function HomePage() {
       return
     }
 
-    console.log('room', room)
     const user = await getUser()
-    router.push(`/user/${user.key}/room/${roomKey.value}`)
+
+    if (user) {
+      router.push(`/user/${user.key}/room/${roomKey.value}`)
+    }
   }, [roomKey, getUser])
 
   const handleCreateRoom = useCallback(async () => {
     const user = await getUser()
+
+    if (!user) {
+      return
+    }
+
     const room = await createRoom(user.key)
+
+    if (isHttpError(room)) {
+      setError(room.error)
+      return
+    }
+
     router.push(`/user/${user.key}/room/${room.key}`)
   }, [getUser, createRoom])
 
