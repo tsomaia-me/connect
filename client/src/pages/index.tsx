@@ -49,7 +49,7 @@ export default function HomePage() {
 
     console.log('room', room)
     const user = await getUser()
-    // router.push(`/user/${user.key}/room/${roomKey.value}`)
+    router.push(`/user/${user.key}/room/${roomKey.value}`)
   }, [roomKey, getUser])
 
   const handleCreateRoom = useCallback(async () => {
