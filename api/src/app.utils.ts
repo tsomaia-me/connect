@@ -25,3 +25,10 @@ export function toSocketErrorResponse(statusCode: number, message: string): Sock
     message,
   }
 }
+
+export function toSocketEvent<T>(event: string, data: T): { event: string, data: T } {
+  return {
+    event,
+    data,
+  }
+}

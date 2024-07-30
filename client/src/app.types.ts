@@ -9,3 +9,11 @@ export interface HttpError {
   error: string
   statusCode: number
 }
+
+export type PeersRecord = Record<string, Peer>
+export type PeersMap = Map<string, Peer>
+
+export interface Peer {
+  connection: RTCPeerConnection
+  dataChannel: RTCDataChannel | null
+}

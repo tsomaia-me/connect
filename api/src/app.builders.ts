@@ -1,4 +1,4 @@
-import { Room, User } from './app.models'
+import { Participant, Room, User } from './app.models'
 
 export class RoomBuilder {
   private room: Room
@@ -8,30 +8,32 @@ export class RoomBuilder {
   }
 
   withName(name: string) {
-    const newRoom = this.getClone()
-    newRoom.name = name
+    this.room = this.getClone()
+    this.room.name = name
 
     return this
   }
 
-  withParticipant(participant: User) {
-    const newRoom = this.getClone()
-    newRoom.participants.push(participant)
+  withParticipant(participant: Participant) {
+    if (!this.room.participants.map(participant => participant.user.id).includes(participant.user.id)) {
+      this.room = this.getClone()
+      this.room.participants.push(participant)
+    }
 
     return this
   }
 
   withoutParticipant(participant: User) {
-    const newRoom = this.getClone()
-    newRoom.participants = newRoom.participants.filter(p => p.key !== participant.key)
+    this.room = this.getClone()
+    this.room.participants = this.room.participants.filter(p => p.user.key !== participant.key)
 
     return this
   }
 
   withMaskedKeys() {
-    const newRoom = this.getClone()
-    newRoom.key = ''
-    newRoom.hostKey = ''
+    this.room = this.getClone()
+    this.room.key = ''
+    this.room.hostKey = ''
 
     return this
   }
@@ -70,15 +72,15 @@ export class UserBuilder {
   }
 
   withUsername(username: string) {
-    const newUser = this.getClone()
-    newUser.username = username
+    this.user = this.getClone()
+    this.user.username = username
 
     return this
   }
 
   withMaskedKeys() {
-    const newUser = this.getClone()
-    newUser.key = ''
+    this.user = this.getClone()
+    this.user.key = ''
 
     return this
   }

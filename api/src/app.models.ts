@@ -16,6 +16,10 @@ export class User {
   username: string
 }
 
+export class Participant {
+  user: User
+}
+
 export class CreateRoomModel {
   // @IsString()
   // name: string
@@ -46,7 +50,7 @@ export class Room {
   hostKey: string
 
   @IsArray()
-  participants: User[]
+  participants: Participant[]
 }
 
 export class RealtimeRoomModel {

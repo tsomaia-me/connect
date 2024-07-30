@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation'
 import { SocketProvider } from '@/components/SocketProvider'
-import { DashboardContainer } from '@/components/DashboardContainer'
+import { DataSubscriptionContainer } from '@/components/DataSubscriptionContainer'
 
 const SIGNALING_SERVER_URL = 'http://localhost:8080'
 
@@ -32,7 +32,7 @@ export default function RoomPage() {
   return (
     <SocketProvider url={SIGNALING_SERVER_URL}>
       {params?.userKey && params.roomKey && (
-        <DashboardContainer
+        <DataSubscriptionContainer
           userKey={params.userKey.toString()}
           roomKey={params.roomKey.toString()}
         />

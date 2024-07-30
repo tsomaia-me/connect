@@ -18,12 +18,16 @@ export class JoinRoomModel {
   hostKey?: string
 }
 
+export class Participant {
+  user: User
+}
+
 export class Room {
   id: string
   key: string
   name: string
   hostKey: string
-  participants: User[]
+  participants: Participant[]
 }
 
 export class JoinRoomSignal {

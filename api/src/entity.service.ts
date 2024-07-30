@@ -58,7 +58,7 @@ export abstract class EntityService<Entity extends ModelBase, Builder extends En
     return this.entitiesByKeys.get(key) ?? null
   }
 
-  async updateByKey(key: string, mapper: (oldEntity: Builder) => Builder, commit = true) {
+  async updateByKey(key: string, mapper: (oldEntity: Builder) => Builder, commit = true): Promise<Entity> {
     const entity = this.entitiesByKeys.get(key)
 
     if (!entity) {
@@ -74,14 +74,16 @@ export abstract class EntityService<Entity extends ModelBase, Builder extends En
     if (commit) {
       await this.commit()
     }
+
+    return updatedEntity
   }
 
   async updateWhere(
     mapper: (oldRoom: Builder) => Builder,
     predicate: (room: Entity) => boolean,
     commit = true
-  ) {
-    await Promise.all(
+  ): Promise<Entity[]> {
+    const updatedRooms = await Promise.all(
       this.entityList.filter(predicate).map(room => {
         return this.updateByKey(room.key, mapper)
       })
@@ -90,13 +92,15 @@ export abstract class EntityService<Entity extends ModelBase, Builder extends En
     if (commit) {
       await this.commit()
     }
+
+    return updatedRooms
   }
 
-  findUniqueId() {
+  findUniqueId(): string {
     return findUniqueUuid(new Set(this.entitiesByIds.keys()))
   }
 
-  findUniqueKey() {
+  findUniqueKey(): string {
     return findUniqueUuid(new Set(this.entitiesByKeys.keys()))
   }
 

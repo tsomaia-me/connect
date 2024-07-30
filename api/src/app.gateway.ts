@@ -5,15 +5,14 @@ import {
   SubscribeMessage,
   WebSocketGateway
 } from '@nestjs/websockets'
-import { BadRequestException } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { UserService } from './user.service'
 import { RoomService } from './room.service'
-import { JoinRoomSignal, OfferSignal, Room, User } from './app.models'
+import { JoinRoomSignal, OfferSignal } from './app.models'
 import { RoomEvent, SignalType, SocketEvent, UserEvent } from './app.types'
 import { toProtectedSerializedRoom, toProtectedSerializedUser } from './app.serializers'
 import { filter, map, startWith, Subject } from 'rxjs'
-import { toSocketErrorResponse, toSocketSuccessResponse } from './app.utils'
+import { toSocketErrorResponse, toSocketEvent, toSocketSuccessResponse } from './app.utils'
 
 @WebSocketGateway({ cors: true })
 export class AppGateway implements OnGatewayDisconnect {
@@ -36,6 +35,7 @@ export class AppGateway implements OnGatewayDisconnect {
       startWith(user),
       map(user => toProtectedSerializedUser(user)),
       map(toSocketSuccessResponse),
+      map(data => toSocketEvent(`user:${userKey}`, data)),
     )
   }
 
@@ -49,6 +49,7 @@ export class AppGateway implements OnGatewayDisconnect {
       startWith(room),
       map(room => toProtectedSerializedRoom(room)),
       map(toSocketSuccessResponse),
+      map(data => toSocketEvent(`room:${roomKey}`, data)),
     )
   }
 
@@ -69,11 +70,14 @@ export class AppGateway implements OnGatewayDisconnect {
     }
 
     this.connections.set(user.id, socket)
-    await this.roomService.updateByKey(room.key, builder => builder.withParticipant(user))
+
+    const updatedRoom = await this.roomService.updateByKey(room.key, builder => builder.withParticipant({
+      user,
+    }))
 
     this.events$.next({
       type: 'room',
-      payload: room,
+      payload: updatedRoom,
     })
 
     return toSocketSuccessResponse('joined')
@@ -81,27 +85,34 @@ export class AppGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage('offer')
   async offer(@MessageBody() data: OfferSignal) {
-    await this.send(data.receiverId, 'offer', data)
+    console.log('received offer', data)
+    return await this.send(data.receiverId, 'offer', data)
   }
 
   @SubscribeMessage('answer')
   async answer(@MessageBody() data: OfferSignal) {
-    await this.send(data.receiverId, 'answer', data)
+    console.log('received answer', data)
+    return await this.send(data.receiverId, 'answer', data)
   }
 
   @SubscribeMessage('icecandidate')
   async icecandidate(@MessageBody() data: OfferSignal) {
-    await this.send(data.receiverId, 'icecandidate', data)
+    return await this.send(data.receiverId, `icecandidate:${data.senderId}`, data)
   }
 
-  async send(receiverId: string, event: SignalType, message: unknown) {
+  async send(receiverId: string, event: string, message: unknown) {
     const connection = this.connections.get(receiverId)
 
-    if (connection) {
-      const user = await this.userService.findById(receiverId)
-      console.log('emitting', event, 'to', user?.username)
-      connection.emit(event, message)
+    if (!connection) {
+      return
     }
+
+    const user = await this.userService.findById(receiverId)
+    console.log('emitting', event, 'to', user?.username)
+
+    return await new Promise(resolve => {
+      connection.emit(event, message, response => resolve(toSocketSuccessResponse(response)))
+    })
   }
 
   async handleDisconnect(socket: Socket) {
@@ -116,7 +127,7 @@ export class AppGateway implements OnGatewayDisconnect {
 
         await this.roomService.updateWhere(
           builder => builder.withoutParticipant(user),
-          room => room.participants.map(participant => participant.id).includes(user.id)
+          room => room.participants.map(participant => participant.user.id).includes(user.id)
         )
 
         this.connections.delete(id)

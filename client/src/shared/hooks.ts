@@ -49,22 +49,30 @@ export function useEmitter(): <T>(message: string, payload: unknown) => Promise<
   }, [socket])
 }
 
-export function useRealtimeData<T>(message: string, payload: unknown) {
-  const emit = useEmitter()
+export function useRealtimeData<T>(message: string, key: unknown) {
+  const socket = useSocket()
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<unknown | null>(null)
 
   useEffect(() => {
-    emit<T>(message, payload)
-      .then(data => {
-        setData(data)
+    const listener = (response: SocketResponse<T>) => {
+      if (response.ok) {
+        console.log(message, key, response.ok, response.payload)
+        setData(response.payload)
         setError(null)
-      })
-      .catch(error => {
+      } else {
+        console.log(message, key, response.ok, response)
         setData(null)
-        setError(error)
-      })
-  }, [message, payload, emit])
+        setError(response)
+      }
+    }
+    socket.on(`${message}:${key}`, listener)
+    socket.emit(message, key)
+
+    return () => {
+      socket.off(`${message}:${key}`, listener)
+    }
+  }, [message, key, socket])
 
   return [data, error]
 }
