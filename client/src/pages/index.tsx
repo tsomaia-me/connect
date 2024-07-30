@@ -1,38 +1,109 @@
 'use client'
 
-import { Form } from '@/shared/Form'
 import { Button } from '@/shared/Button'
 import { Input, useField } from '@/shared/Field'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCreateRoom, useFetchRoom, useLogin } from '@/hooks'
+import { User } from '@/app.models'
+import { isHttpError } from '@/app.utils'
+import classNames from 'classnames'
 
-const SIGNALING_SERVER_URL = 'http://localhost:8080'
+const STORE_USER_KEY = '@store/user'
 
 export default function HomePage() {
   const router = useRouter()
   const username = useField<string>('')
-  const login = useCallback(async () => {
-    const response = await fetch(`${SIGNALING_SERVER_URL}/login`, {
-      mode: 'cors',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: username.value,
-      })
-    })
-    const data = await response.json()
-    router.push(`/user/${data.key}`)
-  }, [username])
+  const roomKey = useField<string>('')
+  const userRef = useRef<User | null>(null)
+  const login = useLogin()
+  const getRoom = useFetchRoom()
+  const createRoom = useCreateRoom()
+  const [error, setError] = useState<string | null>(null)
+
+  const getUser = useCallback(async () => {
+    if (userRef.current && userRef.current?.username === username.value) {
+      return userRef.current as User
+    }
+
+    const user = await login(username.value)
+
+    if (isHttpError(user)) {
+      setError(user.error)
+      return
+    }
+
+    userRef.current = user
+    localStorage.setItem(STORE_USER_KEY, JSON.stringify(user))
+
+    return user
+  }, [username, login])
+
+  const joinRoom = useCallback(async () => {
+    const room = await getRoom(roomKey.value)
+
+    if (isHttpError(room)) {
+      setError(room.error)
+      return
+    }
+
+    console.log('room', room)
+    const user = await getUser()
+    // router.push(`/user/${user.key}/room/${roomKey.value}`)
+  }, [roomKey, getUser])
+
+  const handleCreateRoom = useCallback(async () => {
+    const user = await getUser()
+    const room = await createRoom(user.key)
+    router.push(`/user/${user.key}/room/${room.key}`)
+  }, [getUser, createRoom])
+
+  useEffect(() => {
+    const storedUserData = JSON.parse(localStorage.getItem(STORE_USER_KEY) ?? 'null')
+
+    if (storedUserData) {
+      userRef.current = storedUserData
+      username.onChange(storedUserData.username)
+    }
+  }, [username.onChange])
 
   return (
     <div className="flex flex-row justify-center items-center h-full dark:bg-gray-900">
       <div className="mt-16 w-96 flex flex-col gap-6">
-        <Form className="flex flex-col gap-6" onSubmit={login}>
+        <div className="flex flex-col gap-6">
           <Input placeholder="Type your username" field={username} autoFocus={true}/>
-          <Button type="submit">Log in</Button>
-        </Form>
+        </div>
+
+        <div className="flex flex-row items-center gap-4 px-4">
+          <div className="flex-1 border-t border-gray-500"></div>
+          <div className="text-gray-500">Enter a room</div>
+          <div className="flex-1 border-t border-gray-500"></div>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <Input placeholder="Enter a room key" field={roomKey} autoFocus={true}/>
+          <Button type="button" onClick={joinRoom}>Join</Button>
+        </div>
+
+        <div className="flex flex-row items-center gap-4 px-4">
+          <div className="flex-1 border-t border-gray-500"></div>
+          <div className="text-gray-500">OR</div>
+          <div className="flex-1 border-t border-gray-500"></div>
+        </div>
+
+        <Button type="button" variant="danger" onClick={handleCreateRoom}>
+          Create a Room
+        </Button>
+
+        <div className={classNames('flex flex-col gap-6', !error && 'invisible')}>
+          <div className="px-4">
+            <div className="flex-1 border-t border-gray-500"></div>
+          </div>
+
+          <div className="text-red-500 text-center">
+            {error ?? '-'}
+          </div>
+        </div>
       </div>
     </div>
   )
