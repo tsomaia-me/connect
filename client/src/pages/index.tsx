@@ -1,13 +1,14 @@
 'use client'
 
 import { Button } from '@/shared/Button'
-import { Input, useField } from '@/shared/Field'
+import { InputField } from '@/shared/Field'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCreateRoom, useFetchRoom, useLogin } from '@/hooks'
 import { User } from '@/app.models'
 import { isHttpError } from '@/app.utils'
 import classNames from 'classnames'
+import { useField } from '@/shared/hooks'
 
 const STORE_USER_KEY = '@store/user'
 
@@ -84,7 +85,7 @@ export default function HomePage() {
     <div className="flex flex-row justify-center items-center h-full dark:bg-gray-900">
       <div className="mt-16 w-96 flex flex-col gap-6">
         <div className="flex flex-col gap-6">
-          <Input placeholder="Type your username" field={username} autoFocus={true}/>
+          <InputField placeholder="Type your username" field={username} autoFocus={true}/>
         </div>
 
         <div className="flex flex-row items-center gap-4 px-4">
@@ -94,7 +95,7 @@ export default function HomePage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <Input placeholder="Enter a room key" field={roomKey} autoFocus={true}/>
+          <InputField placeholder="Enter a room key" field={roomKey} autoFocus={true}/>
           <Button type="button" onClick={joinRoom}>Join</Button>
         </div>
 

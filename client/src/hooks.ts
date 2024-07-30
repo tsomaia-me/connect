@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFetchBody } from '@/components/FetchProvider'
 import { Room, User } from '@/app.models'
 import { HttpError } from '@/app.types'
+import { useSignaler } from '@/components/Signaler'
 
 export function useCache<C extends (...args: unknown[]) => unknown>(getFresh: C) {
   const cacheRef = useRef<ReturnType<C> | null>(null)
@@ -86,19 +87,3 @@ export function useCreateRoom() {
   }, [])
 }
 
-export function useRealtimeRoom(roomKey: string) {
-  const fetch = useFetchBody<Room | HttpError>()
-
-  return useCallback((key: string) => {
-    return fetch(`/room/${key}`, {
-      mode: 'cors',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: {
-        key,
-      },
-    })
-  }, [])
-}

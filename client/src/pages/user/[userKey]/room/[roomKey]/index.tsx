@@ -1,13 +1,8 @@
 'use client'
 
-import { Signaler } from '@/components/Signaler'
-import { PeerNetworkProvider } from '@/components/PeerNetworkProvider'
-import { useCallback, useEffect, useState } from 'react'
-import { Room, User } from '@/app.models'
-import { useParams, useRouter } from 'next/navigation'
-import { Dashboard } from '@/components/dashboard'
-import { useFetchRoom, useFetchUser } from '@/hooks'
-import { isHttpError } from '@/app.utils'
+import { useParams } from 'next/navigation'
+import { SocketProvider } from '@/components/SocketProvider'
+import { DashboardContainer } from '@/components/DashboardContainer'
 
 const SIGNALING_SERVER_URL = 'http://localhost:8080'
 
@@ -33,45 +28,66 @@ export async function getRoom(key: string) {
 
 export default function RoomPage() {
   const params = useParams()
-  const router = useRouter()
-  const fetchUser = useFetchUser()
-  const fetchRoom = useFetchRoom()
-  const [user, setUser] = useState<User | null>(null)
-  const [room, setRoom] = useState<Room | null>(null)
-  const loadUser = useCallback(async () => {
-    const user = await fetchUser(params.userKey?.toString() ?? '')
-    const room = await fetchRoom(params.roomKey?.toString() ?? '')
-
-    if (isHttpError(user) || isHttpError(room)) {
-      console.log('user', user)
-      console.log('room', room)
-      router.push('/')
-      return
-    }
-
-    setUser(user)
-    setRoom(room)
-  }, [params, router, fetchUser, fetchRoom])
-
-  useEffect(() => {
-    if (params?.userKey) {
-      void loadUser()
-    }
-  }, [params, loadUser])
 
   return (
-    <Signaler signalingServerUrl={SIGNALING_SERVER_URL}>
-      {(user && room) && (
-        <PeerNetworkProvider user={user} room={room}>
-          <Dashboard
-            user={user}
-            room={room}
-          />
-        </PeerNetworkProvider>
+    <SocketProvider url={SIGNALING_SERVER_URL}>
+      {params?.userKey && params.roomKey && (
+        <DashboardContainer
+          userKey={params.userKey.toString()}
+          roomKey={params.roomKey.toString()}
+        />
       )}
-    </Signaler>
+    </SocketProvider>
   )
 }
+
+// export default function RoomPage() {
+//   const params = useParams()
+//   const router = useRouter()
+//   const socketRef = useRef<Socket>()
+//
+//   if (!socketRef.current) {
+//     socketRef.current = io(SIGNALING_SERVER_URL)
+//   }
+//
+//   const fetchUser = useFetchUser()
+//   const fetchRoom = useRealtimeRoom()
+//   const [user, setUser] = useState<User | null>(null)
+//   const [room, setRoom] = useState<Room | null>(null)
+//   const loadUser = useCallback(async () => {
+//     const user = await fetchUser(params.userKey?.toString() ?? '')
+//     const room = await fetchRoom(params.roomKey?.toString() ?? '')
+//
+//     if (isHttpError(user) || isHttpError(room)) {
+//       console.log('user', user)
+//       console.log('room', room)
+//       router.push('/')
+//       return
+//     }
+//
+//     setUser(user)
+//     setRoom(room)
+//   }, [params, router, fetchUser, fetchRoom])
+//
+//   useEffect(() => {
+//     if (params?.userKey) {
+//       void loadUser()
+//     }
+//   }, [params, loadUser])
+//
+//   return (
+//     <Signaler signalingServerUrl={SIGNALING_SERVER_URL}>
+//       {(user && room) && (
+//         <PeerNetworkProvider user={user} room={room}>
+//           <Dashboard
+//             user={user}
+//             room={room}
+//           />
+//         </PeerNetworkProvider>
+//       )}
+//     </Signaler>
+//   )
+// }
 
 // import { useEffect, useRef, useState } from 'react'
 // import { PeerNetwork, Room, Signaler, TextMessage, WebSocketSignaler } from '@/connection-logic'

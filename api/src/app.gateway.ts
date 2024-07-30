@@ -9,13 +9,16 @@ import { BadRequestException } from '@nestjs/common'
 import { Socket } from 'socket.io'
 import { UserService } from './user.service'
 import { RoomService } from './room.service'
-import { JoinRoomSignal, OfferSignal } from './app.models'
-import { SignalType } from './app.types'
+import { JoinRoomSignal, OfferSignal, Room, User } from './app.models'
+import { RoomEvent, SignalType, SocketEvent, UserEvent } from './app.types'
 import { toProtectedSerializedRoom, toProtectedSerializedUser } from './app.serializers'
+import { filter, map, startWith, Subject } from 'rxjs'
+import { toSocketErrorResponse, toSocketSuccessResponse } from './app.utils'
 
 @WebSocketGateway({ cors: true })
 export class AppGateway implements OnGatewayDisconnect {
   private connections = new Map<string, Socket>()
+  private events$ = new Subject<SocketEvent>()
 
   constructor(
     private readonly userService: UserService,
@@ -23,31 +26,57 @@ export class AppGateway implements OnGatewayDisconnect {
   ) {
   }
 
-  @SubscribeMessage('join_room')
+  @SubscribeMessage('user')
+  async getUser(@MessageBody() userKey: string) {
+    const user = await this.userService.findByKey(userKey)
+
+    return this.events$.pipe(
+      filter((event): event is UserEvent => event.type === 'user' && event.payload.key === userKey),
+      map(event => event.payload),
+      startWith(user),
+      map(user => toProtectedSerializedUser(user)),
+      map(toSocketSuccessResponse),
+    )
+  }
+
+  @SubscribeMessage('room')
+  async getRoom(@MessageBody() roomKey: string) {
+    const room = await this.roomService.findByKey(roomKey)
+
+    return this.events$.pipe(
+      filter((event): event is RoomEvent => event.type === 'room' && event.payload.key === roomKey),
+      map(event => event.payload),
+      startWith(room),
+      map(room => toProtectedSerializedRoom(room)),
+      map(toSocketSuccessResponse),
+    )
+  }
+
+  @SubscribeMessage('join')
   async joinRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: JoinRoomSignal,
   ) {
-    const user = await this.userService.findById(data.userKey)
+    const user = await this.userService.findByKey(data.userKey)
     const room = await this.roomService.findByKey(data.roomKey)
 
     if (!user) {
-      throw new BadRequestException(`Invalid user key: ${user.key}`)
+      return toSocketErrorResponse(404, `Invalid user key: ${data.userKey}`)
     }
 
     if (!room) {
-      throw new BadRequestException(`Invalid room key: ${room.key}`)
+      return toSocketErrorResponse(404, `Invalid room key: ${data.roomKey}`)
     }
 
     this.connections.set(user.id, socket)
     await this.roomService.updateByKey(room.key, builder => builder.withParticipant(user))
 
-    room.participants.forEach(participant => {
-      this.send(participant.id, 'joined_room', {
-        user: toProtectedSerializedUser(user),
-        room: toProtectedSerializedRoom(room),
-      })
+    this.events$.next({
+      type: 'room',
+      payload: room,
     })
+
+    return toSocketSuccessResponse('joined')
   }
 
   @SubscribeMessage('offer')

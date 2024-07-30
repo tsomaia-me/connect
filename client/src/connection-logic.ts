@@ -27,6 +27,7 @@ export type PeerMessage = PingMessage | PongMessage | TextMessage
 export type Callback<T> = (data: T) => void
 
 export interface SignalerEventMap {
+  room: Room
   join_room: JoinRoomSignal
   joined_room: JoinedRoomSignal
   room_updated: RoomUpdatedSignal
@@ -75,14 +76,15 @@ export class DummySignaler extends EventHandler<SignalerEventMap> implements Sig
 }
 
 export class WebSocketSignaler extends EventHandler<SignalerEventMap> implements Signaler {
-  private connection: io.Socket
+  public readonly connection: io.Socket
 
   constructor(url: string) {
     super()
     this.connection = new io.io(url)
-    this.connection.on('signal', signal => {
-      this.trigger(signal.type, signal)
-    })
+    this.connection.on('room', signal => this.trigger('room', signal))
+    this.connection.on('offer', signal => this.trigger('offer', signal))
+    this.connection.on('answer', signal => this.trigger('answer', signal))
+    this.connection.on('icecandidate', signal => this.trigger('icecandidate', signal))
   }
 
   send<E extends keyof SignalerEventMap>(event: E, signal: SignalerEventMap[E]) {

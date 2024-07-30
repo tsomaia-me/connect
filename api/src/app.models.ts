@@ -49,6 +49,11 @@ export class Room {
   participants: User[]
 }
 
+export class RealtimeRoomModel {
+  @IsString()
+  key: string
+}
+
 export class JoinRoomSignal {
   @IsString()
   roomKey: string
