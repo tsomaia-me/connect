@@ -1,11 +1,11 @@
 import '../globals.css'
 import { FetchProvider } from '@/components/FetchProvider'
 
-const SIGNALING_SERVER_URL = 'http://localhost:8080'
+const API_BASE_URL = 'http://localhost:8080/api'
 
 export default function App({ Component, pageProps }) {
   return (
-    <FetchProvider baseUrl={SIGNALING_SERVER_URL}>
+    <FetchProvider baseUrl={API_BASE_URL}>
       <Component {...pageProps}/>
     </FetchProvider>
   )

@@ -1,3 +1,4 @@
+import { promises as fs } from 'fs'
 import { findUniqueUuid } from './app.utils'
 
 export interface ModelBase {
@@ -12,45 +13,83 @@ export interface EntityBuilder<Entity> {
 }
 
 export abstract class EntityService<Entity extends ModelBase, Builder extends EntityBuilder<Entity>> {
+  entityList: Entity[] = []
   entitiesByIds = new Map<string, Entity>()
   entitiesByKeys = new Map<string, Entity>()
+  isLoaded = false
+
+  abstract getSourceFilePath(): string
 
   abstract getBuilder(entity: Entity): Builder
 
-  add(entity: Entity) {
+  async add(entity: Entity, commit = true) {
+    if (this.entitiesByIds.has(entity.id)) {
+      throw new Error(`Entity with the ID ${entity.id} already exists`)
+    }
+
+    if (this.entitiesByKeys.has(entity.key)) {
+      throw new Error(`Entity with the key ${entity.key} already exists`)
+    }
+
+    this.entityList.push(entity)
     this.entitiesByIds.set(entity.id, entity)
     this.entitiesByKeys.set(entity.key, entity)
+
+    if (commit) {
+      await this.commit()
+    }
   }
 
-  getAll() {
-    return Array.from(this.entitiesByIds.values())
+  async getAll(): Promise<Entity[]> {
+    await this.loadEntitiesIfNeeded()
+
+    return this.entityList
   }
 
-  findById(id: string): Entity | null {
+  async findById(id: string): Promise<Entity | null> {
+    await this.loadEntitiesIfNeeded()
+
     return this.entitiesByIds.get(id) ?? null
   }
 
-  findByKey(key: string): Entity | null {
+  async findByKey(key: string): Promise<Entity | null> {
+    await this.loadEntitiesIfNeeded()
+
     return this.entitiesByKeys.get(key) ?? null
   }
 
-  updateByKey(key: string, mapper: (oldEntity: Builder) => Builder) {
+  async updateByKey(key: string, mapper: (oldEntity: Builder) => Builder, commit = true) {
     const entity = this.entitiesByKeys.get(key)
 
-    if (entity) {
+    if (!entity) {
       throw new Error(`Invalid entity key: ${key}`)
     }
 
-    this.entitiesByKeys.set(key, mapper(this.getBuilder(entity)).toModel())
+    const updatedEntity = mapper(this.getBuilder(entity)).toModel()
+
+    this.entityList = this.entityList.map(entity => entity.key === key ? updatedEntity : entity)
+    this.entitiesByIds.set(updatedEntity.id, updatedEntity)
+    this.entitiesByKeys.set(key, updatedEntity)
+
+    if (commit) {
+      await this.commit()
+    }
   }
 
-  updateWhere(
+  async updateWhere(
     mapper: (oldRoom: Builder) => Builder,
     predicate: (room: Entity) => boolean,
+    commit = true
   ) {
-    this.getAll().filter(predicate).forEach(room => {
-      this.updateByKey(room.key, mapper)
-    })
+    await Promise.all(
+      this.entityList.filter(predicate).map(room => {
+        return this.updateByKey(room.key, mapper)
+      })
+    )
+
+    if (commit) {
+      await this.commit()
+    }
   }
 
   findUniqueId() {
@@ -59,5 +98,21 @@ export abstract class EntityService<Entity extends ModelBase, Builder extends En
 
   findUniqueKey() {
     return findUniqueUuid(new Set(this.entitiesByKeys.keys()))
+  }
+
+  async commit() {
+    await fs.writeFile(this.getSourceFilePath(), JSON.stringify(this.entityList, undefined, 2), 'utf-8')
+  }
+
+  private async loadEntitiesIfNeeded() {
+    if (!this.isLoaded) {
+      const rawData = await fs.readFile(this.getSourceFilePath(), 'utf-8')
+      this.entityList = rawData
+        ? JSON.parse(rawData)
+        : []
+      this.entitiesByIds = new Map(this.entityList.map(entity => [entity.id, entity]))
+      this.entitiesByKeys = new Map(this.entityList.map(entity => [entity.key, entity]))
+      this.isLoaded = true
+    }
   }
 }

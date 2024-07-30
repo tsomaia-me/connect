@@ -5,11 +5,15 @@ import { EntityService } from './entity.service'
 
 @Injectable()
 export class RoomService extends EntityService<Room, RoomBuilder> {
+  getSourceFilePath(): string {
+    return 'data/rooms.json'
+  }
+
   getBuilder(entity: Room): RoomBuilder {
     return new RoomBuilder(entity)
   }
 
-  createRoom(data: CreateRoomModel) {
+  async createRoom(data: CreateRoomModel) {
     const room: Room = {
       id: this.findUniqueId(),
       key: this.findUniqueKey(),
@@ -18,7 +22,7 @@ export class RoomService extends EntityService<Room, RoomBuilder> {
       participants: [],
     }
 
-    this.add(room)
+    await this.add(room)
 
     return room
   }

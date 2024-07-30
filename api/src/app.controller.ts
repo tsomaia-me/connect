@@ -3,7 +3,7 @@ import { UserService } from './user.service'
 import { CreateRoomModel, LoginModel, Room, User } from './app.models'
 import { RoomService } from './room.service'
 
-@Controller()
+@Controller('/api')
 export class AppController {
   constructor(
     private readonly userService: UserService,
@@ -12,13 +12,13 @@ export class AppController {
   }
 
   @Post('/login')
-  login(@Body() data: LoginModel): User {
-    return this.userService.login(data)
+  async login(@Body() data: LoginModel): Promise<User> {
+    return await this.userService.login(data)
   }
 
   @Post('/user/:key')
-  findUserByKey(@Param('key') key: string): User {
-    const user = this.userService.findByKey(key)
+  async findUserByKey(@Param('key') key: string): Promise<User> {
+    const user = await this.userService.findByKey(key)
 
     if (!user) {
       throw new NotFoundException(`Unknown key: ${key}`)
@@ -28,13 +28,13 @@ export class AppController {
   }
 
   @Post('/room/create')
-  createRoom(@Body() data: CreateRoomModel): Room {
-    return this.roomService.createRoom(data)
+  async createRoom(@Body() data: CreateRoomModel): Promise<Room> {
+    return await this.roomService.createRoom(data)
   }
 
   @Post('/room/:key')
-  findRoomByKey(@Param('key') key: string): Room {
-    const room = this.roomService.findByKey(key)
+  async findRoomByKey(@Param('key') key: string): Promise<Room> {
+    const room = await this.roomService.findByKey(key)
 
     if (!room) {
       throw new NotFoundException(`Unknown key: ${key}`)

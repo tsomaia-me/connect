@@ -53,6 +53,23 @@ export function useFetchRoom() {
   }, [])
 }
 
+export function useFetchUser() {
+  const fetch = useFetchBody<User | HttpError>()
+
+  return useCallback((key: string) => {
+    return fetch(`/user/${key}`, {
+      mode: 'cors',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: {
+        key,
+      },
+    })
+  }, [])
+}
+
 export function useCreateRoom() {
   const fetch = useFetchBody<Room | HttpError>()
 
@@ -64,6 +81,23 @@ export function useCreateRoom() {
       },
       body: {
         hostKey: userKey,
+      },
+    })
+  }, [])
+}
+
+export function useRealtimeRoom(roomKey: string) {
+  const fetch = useFetchBody<Room | HttpError>()
+
+  return useCallback((key: string) => {
+    return fetch(`/room/${key}`, {
+      mode: 'cors',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: {
+        key,
       },
     })
   }, [])

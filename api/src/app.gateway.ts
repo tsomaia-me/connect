@@ -24,12 +24,12 @@ export class AppGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage('join_room')
-  joinRoom(
+  async joinRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: JoinRoomSignal,
   ) {
-    const user = this.userService.findById(data.userKey)
-    const room = this.roomService.findByKey(data.roomKey)
+    const user = await this.userService.findById(data.userKey)
+    const room = await this.roomService.findByKey(data.roomKey)
 
     if (!user) {
       throw new BadRequestException(`Invalid user key: ${user.key}`)
@@ -40,7 +40,7 @@ export class AppGateway implements OnGatewayDisconnect {
     }
 
     this.connections.set(user.id, socket)
-    this.roomService.updateByKey(room.key, builder => builder.withParticipant(user))
+    await this.roomService.updateByKey(room.key, builder => builder.withParticipant(user))
 
     room.participants.forEach(participant => {
       this.send(participant.id, 'joined_room', {
@@ -51,40 +51,41 @@ export class AppGateway implements OnGatewayDisconnect {
   }
 
   @SubscribeMessage('offer')
-  offer(@MessageBody() data: OfferSignal) {
-    this.send(data.receiverId, 'offer', data)
+  async offer(@MessageBody() data: OfferSignal) {
+    await this.send(data.receiverId, 'offer', data)
   }
 
   @SubscribeMessage('answer')
-  answer(@MessageBody() data: OfferSignal) {
-    this.send(data.receiverId, 'answer', data)
+  async answer(@MessageBody() data: OfferSignal) {
+    await this.send(data.receiverId, 'answer', data)
   }
 
   @SubscribeMessage('icecandidate')
-  icecandidate(@MessageBody() data: OfferSignal) {
-    this.send(data.receiverId, 'icecandidate', data)
+  async icecandidate(@MessageBody() data: OfferSignal) {
+    await this.send(data.receiverId, 'icecandidate', data)
   }
 
-  send(receiverId: string, event: SignalType, message: unknown) {
+  async send(receiverId: string, event: SignalType, message: unknown) {
     const connection = this.connections.get(receiverId)
 
     if (connection) {
-      console.log('emitting', event, 'to', this.userService.findById(receiverId)?.username)
+      const user = await this.userService.findById(receiverId)
+      console.log('emitting', event, 'to', user?.username)
       connection.emit(event, message)
     }
   }
 
-  handleDisconnect(socket: Socket): any {
+  async handleDisconnect(socket: Socket) {
     for (const [id, connection] of this.connections.entries()) {
       if (socket === connection) {
-        const user = this.userService.findById(id)
+        const user = await this.userService.findById(id)
 
         if (!user) {
           console.log('unknown client disconnected')
           break
         }
 
-        this.roomService.updateWhere(
+        await this.roomService.updateWhere(
           builder => builder.withoutParticipant(user),
           room => room.participants.map(participant => participant.id).includes(user.id)
         )

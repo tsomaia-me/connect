@@ -25,11 +25,13 @@ const PeerNetworkContext = createContext({
   addSignalListener: <Event extends keyof PeerNetworkEventMap>(
     event: Event,
     listener: PeerNetworkEventMap[Event]
-  ): void => {},
+  ): void => {
+  },
   removeSignalListener: <Event extends keyof PeerNetworkEventMap>(
     event: Event,
     listener: PeerNetworkEventMap[Event]
-  ): void => {},
+  ): void => {
+  },
   broadcast: (message: unknown): void => {
   },
 })
@@ -66,7 +68,7 @@ export function PeerNetworkProvider(props: PeerNetworkProviderProps) {
   const { user, room, children } = props
   const signaler = useSignaler()
   const [network, setNetwork] = useState<PeerNetwork>(dummyNetwork)
-  const [status, setStatus] = useState<PeerNetworkStatus>('connected')
+  const [status, setStatus] = useState<PeerNetworkStatus>('connecting')
   const [messages, setMessages] = useState<NetworkMessage[]>([])
 
   const addMessage = useCallback((senderId: string, message: string) => {
@@ -126,6 +128,8 @@ export function PeerNetworkProvider(props: PeerNetworkProviderProps) {
     }
 
     const network = new PeerNetwork(signaler)
+
+    network.acceptIncomingConnections()
 
     setNetwork(network)
 

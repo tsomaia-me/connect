@@ -4,8 +4,10 @@ import { Signaler } from '@/components/Signaler'
 import { PeerNetworkProvider } from '@/components/PeerNetworkProvider'
 import { useCallback, useEffect, useState } from 'react'
 import { Room, User } from '@/app.models'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Dashboard } from '@/components/dashboard'
+import { useFetchRoom, useFetchUser } from '@/hooks'
+import { isHttpError } from '@/app.utils'
 
 const SIGNALING_SERVER_URL = 'http://localhost:8080'
 
@@ -31,17 +33,25 @@ export async function getRoom(key: string) {
 
 export default function RoomPage() {
   const params = useParams()
+  const router = useRouter()
+  const fetchUser = useFetchUser()
+  const fetchRoom = useFetchRoom()
   const [user, setUser] = useState<User | null>(null)
   const [room, setRoom] = useState<Room | null>(null)
   const loadUser = useCallback(async () => {
-    const [user, room] = await Promise.all([
-      getUser(params.userKey?.toString() ?? ''),
-      getRoom(params.roomKey?.toString() ?? ''),
-    ])
+    const user = await fetchUser(params.userKey?.toString() ?? '')
+    const room = await fetchRoom(params.roomKey?.toString() ?? '')
+
+    if (isHttpError(user) || isHttpError(room)) {
+      console.log('user', user)
+      console.log('room', room)
+      router.push('/')
+      return
+    }
 
     setUser(user)
     setRoom(room)
-  }, [params])
+  }, [params, router, fetchUser, fetchRoom])
 
   useEffect(() => {
     if (params?.userKey) {
@@ -53,7 +63,10 @@ export default function RoomPage() {
     <Signaler signalingServerUrl={SIGNALING_SERVER_URL}>
       {(user && room) && (
         <PeerNetworkProvider user={user} room={room}>
-          <Dashboard/>
+          <Dashboard
+            user={user}
+            room={room}
+          />
         </PeerNetworkProvider>
       )}
     </Signaler>
