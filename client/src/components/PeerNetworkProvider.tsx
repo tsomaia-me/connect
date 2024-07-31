@@ -56,7 +56,7 @@ export function useMessages() {
   return userPeerNetworkContext().messages
 }
 
-export function useBroadcast() {
+export function useBroadcaster() {
   return userPeerNetworkContext().broadcast
 }
 

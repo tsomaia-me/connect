@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useEmitter } from '@/shared/hooks'
 import { useSocket } from '@/components/SocketProvider'
 import { Peer, PeersMap, PeersRecord } from '@/app.types'
+import { RoomControlsProvider } from '@/components/RoomControlsProvider'
 
 export interface RoomViewProps {
   userKey: string
@@ -24,123 +25,126 @@ export function PeerConnectionContainer(props: RoomViewProps) {
   const emit = useEmitter()
   const peersRef = useRef<PeersRecord>({})
   const [peers, setPeers] = useState<PeersMap>(new Map())
+  const userId = user.id
 
   useEffect(() => {
     if (room.participants.length < 2) {
       return
     }
 
-    const selfIndex = room.participants.map((participant) => participant.user.id).indexOf(user.id)
+    const selfIndex = room.participants.map((participant) => participant.user.id).indexOf(userId)
 
-    if (selfIndex % 2 === 0) {
-      console.log(`even parity ${selfIndex}, initiating offer`)
-      room.participants.forEach(participant => {
-        if (participant.user.id === user.id || peersRef.current[participant.user.id]) {
-          return
-        }
-
-        const peerConnection = new RTCPeerConnection({
-          iceServers: ICE_SERVERS,
+    room.participants.forEach(async participant => {
+      if (participant.user.id === userId || peersRef.current[participant.user.id]) {
+        console.log('cancelling offer', {
+          isSameUser: participant.user.id === userId,
+          alreadyConnected: peersRef.current[participant.user.id],
         })
-        const dataChannel = peerConnection.createDataChannel('default')
-        const peer: Peer = {
-          connection: peerConnection,
-          dataChannel,
-        };
-        peersRef.current[participant.user.id] = peer
-        setPeers(new Map(Object.entries({ ...peersRef.current })))
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log('sending icecandidate')
-            void emit('icecandidate', {
-              senderId: user.id,
-              receiverId: participant.user.id,
-              payload: event.candidate,
-            })
-          }
-        }
-        peerConnection.onnegotiationneeded = async () => {
-          const offer = await peerConnection.createOffer()
-          await peerConnection.setLocalDescription(offer)
-          const answer = await emit('offer', {
+        return
+      }
+
+      const peerConnection = new RTCPeerConnection({
+        iceServers: ICE_SERVERS,
+      })
+      const dataChannel = peerConnection.createDataChannel('default', {
+        negotiated: true,
+        id: 0,
+      })
+      const peer: Peer = {
+        participant: room.participants.find(p => p.user.id === participant.user.id)!,
+        connection: peerConnection,
+        dataChannel: dataChannel,
+      }
+      peersRef.current[participant.user.id] = peer
+      setPeers(new Map(Object.entries({ ...peersRef.current })))
+
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          void emit('icecandidate', {
             senderId: user.id,
             receiverId: participant.user.id,
-            payload: offer,
-          })
-          console.log('received answer', answer.payload)
-          await peerConnection.setRemoteDescription(answer.payload)
-          socket.on(`icecandidate:${participant.user.id}`, async candidate => {
-            console.log('received icecandidate', candidate.payload, 'with answer', answer.payload)
-            await peerConnection.addIceCandidate(candidate.payload)
+            payload: event.candidate,
           })
         }
-        dataChannel.onopen = () => {
-          console.log('data channel opened')
-        }
-        dataChannel.onclose = () => {
-          console.log('data channel closed')
-        }
-      })
-    } else {
-      console.log(`odd parity ${selfIndex}, waiting for offers`)
-      socket.on('offer', async (offer, callback) => {
-        console.log('received offer', offer)
-        const peerConnection = new RTCPeerConnection({
-          iceServers: ICE_SERVERS,
-        })
-        const peer: Peer = {
-          connection: peerConnection,
-          dataChannel: null,
-        }
-        peersRef.current[offer.senderId] = peer
+      }
+
+      dataChannel.onopen = () => {
+        console.log('data channel opened')
+      }
+
+      dataChannel.onclose = () => {
+        console.log(`data channel closed, disconnecting the peer ${participant.user.username}`)
+        delete peersRef.current[participant.user.id]
         setPeers(new Map(Object.entries({ ...peersRef.current })))
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            void emit('icecandidate', {
-              senderId: user.id,
-              receiverId: offer.senderId,
-              payload: event.candidate,
-            })
-          }
-        }
-        peerConnection.ondatachannel = (event) => {
-          console.log('received data channel')
-          peer.dataChannel = event.channel
+      }
 
-          peer.dataChannel.onopen = () => {
-            console.log('data channel opened')
-          }
-          peer.dataChannel.onclose = () => {
-            console.log('data channel closed')
-          }
+      peerConnection.onconnectionstatechange = () => {
+        console.log('connection state changed to', peerConnection.connectionState)
+        if (peerConnection.connectionState === 'closed') {
+          console.log(`peer ${participant.user.username} disconnected`)
+          delete peersRef.current[participant.user.id]
+          setPeers(new Map(Object.entries({ ...peersRef.current })))
         }
+      }
 
-        console.log('accepting offer', offer.payload)
-        await peerConnection.setRemoteDescription(offer.payload)
-        const answer = await peerConnection.createAnswer()
-        await peerConnection.setLocalDescription(answer)
-        console.log('answering', answer)
-        await callback({
+      async function offer() {
+        const offer = await peerConnection.createOffer()
+        await peerConnection.setLocalDescription(offer)
+        const answer = await emit('offer', {
           senderId: user.id,
-          receiverId: offer.senderId,
-          payload: answer,
+          receiverId: participant.user.id,
+          payload: offer,
         })
-
-        socket.on(`icecandidate:${offer.senderId}`, async candidate => {
-          console.log('received icecandidate', candidate.payload, 'with offer', offer.payload)
+        console.log('received answer', answer.payload)
+        await peerConnection.setRemoteDescription(answer.payload)
+        socket.on(`icecandidate:${participant.user.id}`, async candidate => {
+          console.log('received icecandidate', candidate.payload, 'with answer', answer.payload)
           await peerConnection.addIceCandidate(candidate.payload)
         })
-      })
-    }
-  }, [user, room, socket, emit])
+      }
+
+      if (selfIndex % 2 === 0) {
+        console.log(`even parity ${selfIndex}, initiating offer`)
+        console.log('making initial offer')
+        await offer()
+
+        peerConnection.onnegotiationneeded = async () => {
+          console.log('starting negotiation')
+          await offer()
+        }
+      } else {
+        console.log(`odd parity ${selfIndex}, waiting for offers`)
+        socket.on('offer', async (offer, callback) => {
+          console.log('received offer', offer)
+
+          await peerConnection.setRemoteDescription(offer.payload)
+          const answer = await peerConnection.createAnswer()
+          await peerConnection.setLocalDescription(answer)
+          console.log('answering', answer)
+          await callback({
+            senderId: user.id,
+            receiverId: offer.senderId,
+            payload: answer,
+          })
+
+          socket.on(`icecandidate:${offer.senderId}`, async candidate => {
+            console.log('received icecandidate', candidate.payload, 'with offer', offer.payload)
+            await peerConnection.addIceCandidate(candidate.payload)
+          })
+        })
+      }
+    })
+  }, [userId, room, socket, emit])
 
   return (
-    <Dashboard
+    <RoomControlsProvider
       userKey={userKey}
       roomKey={roomKey}
       user={user}
       room={room}
       peers={peers}
-    />
+    >
+      <Dashboard/>
+    </RoomControlsProvider>
   )
 }
