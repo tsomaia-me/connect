@@ -174,6 +174,7 @@ export function Dashboard(props: DashboardProps) {
     }
 
     function onDrawing(event: PeerEvent) {
+      console.log('received drawing from',  room.participants.find(p => p.user.id === event.peerId)?.user.username, event.payload.drawing)
       drawingRef.current = event.payload.drawing
       restoreDrawing()
     }

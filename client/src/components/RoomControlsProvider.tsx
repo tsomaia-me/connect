@@ -86,16 +86,25 @@ export function useRemovePeerEventListener() {
 export function RoomControlsProvider(props: RoomControlsProviderProps) {
   const { userKey, roomKey, user, room, peers, children } = props
   const listenersRef = useRef(new Map<string, Set<PeerEventListener>>())
+  const bufferRef = useRef(new Map<string, PeerEvent[]>())
   const userId = user.id
   const send = useCallback((id: string, event: PeerEvent) => {
     const dataChannel = peers.get(id)?.dataChannel
 
     if (dataChannel?.readyState === 'open') {
-      // console.log('send', event)
       dataChannel.send(JSON.stringify({
         ...event,
         senderId: userId,
       }))
+    } else if (dataChannel) {
+      if (!bufferRef.current.has(id)) {
+        bufferRef.current.set(id, [])
+      }
+
+      bufferRef.current.get(id)?.push({
+        ...event,
+        senderId: userId,
+      } as PeerEvent)
     }
   }, [userId, peers])
   const broadcast = useCallback((event: PeerEvent) => {
@@ -142,6 +151,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
     }
 
     const currentPeerIds = Array.from(peers.keys())
+    const disposers: Array<() => void> = []
 
     for (const savedParticipant of existingPeersRef.current) {
       console.log(savedParticipant.user.id, currentPeerIds)
@@ -164,6 +174,18 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
           peerId: peer.participant.user.id,
           payload: {},
         })
+
+        if (peer.dataChannel.readyState !== 'open') {
+          const onPeerDataChannelOpen = () => {
+            bufferRef.current.get(peer.participant.user.id)?.forEach(event => {
+              peer.dataChannel.send(JSON.stringify(event))
+            })
+          }
+          peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
+          disposers.push(() => {
+            peer.dataChannel.removeEventListener('open', onPeerDataChannelOpen)
+          })
+        }
       }
 
       if (peer.dataChannel) {
@@ -182,6 +204,8 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
       for (const peer of peers.values()) {
         peer.dataChannel.onmessage = null
       }
+
+      disposers.forEach(disposer => disposer())
     }
   }, [peers])
 
