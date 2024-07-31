@@ -88,25 +88,33 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
   const listenersRef = useRef(new Map<string, Set<PeerEventListener>>())
   const bufferRef = useRef(new Map<string, PeerEvent[]>())
   const userId = user.id
+  const addEventToBuffer = useCallback((id: string, event: PeerEvent) => {
+    if (!bufferRef.current.has(id)) {
+      bufferRef.current.set(id, [])
+    }
+
+    bufferRef.current.get(id)?.push({
+      ...event,
+      senderId: userId,
+    } as PeerEvent)
+  }, [userId])
   const send = useCallback((id: string, event: PeerEvent) => {
     const dataChannel = peers.get(id)?.dataChannel
 
     if (dataChannel?.readyState === 'open') {
-      dataChannel.send(JSON.stringify({
-        ...event,
-        senderId: userId,
-      }))
-    } else if (dataChannel) {
-      if (!bufferRef.current.has(id)) {
-        bufferRef.current.set(id, [])
+      try {
+        dataChannel.send(JSON.stringify({
+          ...event,
+          senderId: userId,
+        }))
+      } catch (error) {
+        console.log(error)
+        addEventToBuffer(id, event)
       }
-
-      bufferRef.current.get(id)?.push({
-        ...event,
-        senderId: userId,
-      } as PeerEvent)
+    } else if (dataChannel) {
+      addEventToBuffer(id, event)
     }
-  }, [userId, peers])
+  }, [userId, peers, addEventToBuffer])
   const broadcast = useCallback((event: PeerEvent) => {
     for (const peerId of peers.keys()) {
       send(peerId, event)
@@ -178,7 +186,12 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
         if (peer.dataChannel.readyState !== 'open') {
           const onPeerDataChannelOpen = () => {
             bufferRef.current.get(peer.participant.user.id)?.forEach(event => {
-              peer.dataChannel.send(JSON.stringify(event))
+              try {
+                peer.dataChannel.send(JSON.stringify(event))
+              } catch (error) {
+                console.log(error)
+                addEventToBuffer(peer.participant.user.id, event)
+              }
             })
           }
           peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
