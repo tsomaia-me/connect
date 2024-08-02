@@ -87,8 +87,6 @@ export function Dashboard(props: DashboardProps) {
         return
       }
 
-      // console.log('points', points)
-
       ctx.lineWidth = 2
       ctx.strokeStyle = 'white'
       ctx.beginPath()
@@ -123,30 +121,6 @@ export function Dashboard(props: DashboardProps) {
       points.push(lastPoint)
     }
 
-    function drawPoint([x, y]) {
-      requestAnimationFrame(() => {
-        const point = [x, y]
-        points.push(point)
-        onDelta(() => draw(points), 16)
-      })
-    }
-
-    function onDelta(callback: (timestamp: number) => void, delta: number) {
-      const timestamp = performance.now()
-      const previousTimestamp = lastTimestamp
-      lastTimestamp = timestamp
-
-      if (lastTimestamp) {
-        const deltaTime = timestamp - previousTimestamp
-
-        if (deltaTime < delta) {
-          callback(timestamp)
-        }
-      } else {
-        callback(timestamp)
-      }
-    }
-
     function onMouseDown(event: { offsetX: number; offsetY: number }) {
       isMouseActive = true
       const point = [event.offsetX, event.offsetY, performance.now()]
@@ -163,13 +137,6 @@ export function Dashboard(props: DashboardProps) {
     function onMouseMove(event: { offsetX: number; offsetY: number }) {
       if (isMouseActive) {
         const point = [event.offsetX, event.offsetY, performance.now()]
-        // const lastPoint = points[points.length - 1]
-        // const dx = Math.abs(lastPoint[0] - point[0])
-        // const dy = Math.abs(lastPoint[1] - point[1])
-        //
-        // if (dx < 2 && dy < 2) {
-        //   return
-        // }
 
         points.push(point)
         schedule(() => draw(points))
