@@ -1,6 +1,6 @@
 import { generateId, getAbsolutePoint, getFormattedFileSize, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
-import { Box, Point } from '@/components/shared/types'
+import { Attachment, Box, Point } from '@/components/shared/types'
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
@@ -14,15 +14,8 @@ export interface StickyNoteProps {
   note: Note
   onNoteChange: (note: Note, updateOnlyPeers?: boolean) => void
   onNoteDelete: (noteId: string) => void
-}
-
-export interface Attachment {
-  id: string
-  file: File | null
-  name: string
-  type: string
-  size: number
-  content: string | null
+  onAttachmentLoaded: (attachmentId: string, content: ArrayBuffer) => void
+  onDownloadAttachment: (noteId: string, attachmentId: string) => void
 }
 
 export interface Note {
@@ -37,7 +30,7 @@ export interface Note {
 }
 
 export function StickyNote(props: StickyNoteProps) {
-  const { user, box, note, onNoteChange, onNoteDelete } = props
+  const { user, box, note, onNoteChange, onNoteDelete, onAttachmentLoaded, onDownloadAttachment } = props
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [isMoving, setIsMoving] = useState(false)
   const noteRef = useRef<Note>(note)
@@ -91,16 +84,9 @@ export function StickyNote(props: StickyNoteProps) {
       fileRef.current!.click()
     }
   }, [])
-  const handleDownloadClick = useCallback((attachment: Attachment) => {
-    if (attachment.content) {
-      const a = document.createElement('a')
-      a.href = attachment.content
-      a.download = attachment.name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-    }
-  }, [note])
+  const handleDownloadAttachmentClick = useCallback((attachmentId: string) => {
+    onDownloadAttachment(note.id, attachmentId)
+  }, [note, onDownloadAttachment])
 
   useEffect(() => {
     if (!isMoving && user.id === note.author.id && note.mode === 'edit' && textareaRef.current) {
@@ -131,9 +117,13 @@ export function StickyNote(props: StickyNoteProps) {
       }, true)
     }
 
-    function onMouseUp() {
+    function onMouseUp(event: MouseEvent) {
+      const point = [event.clientX, event.clientY]
       setIsMoving(false)
-      onNoteChange(noteRef.current)
+      onNoteChange({
+        ...noteRef.current,
+        relativePoint: getRelativePoint(point as Point, box),
+      })
     }
 
     window.addEventListener('mousemove', onMouseMove)
@@ -171,7 +161,7 @@ export function StickyNote(props: StickyNoteProps) {
       <textarea
         ref={textareaRef}
         className="bg-transparent w-full min-h-56 p-6 pt-2 focus:outline-none focus:ring-0 border-0 resize-none text-xl text-white overflow-hidden"
-        value={note.content}
+        value={note.content ?? ''}
         readOnly={user.id !== note.author.id}
         onFocus={handleNoteFocus}
         onChange={handleNoteContentChange}
@@ -180,13 +170,14 @@ export function StickyNote(props: StickyNoteProps) {
 
       <div className="mb-4 border-b border-gray-400">
         {note.attachments.map(attachment => (
-          <div key={attachment.id} className="flex justify-between items-center p-4 text-white text-sm max-w-full overflow-hidden gap-2">
+          <div key={attachment.id}
+               className="flex justify-between items-center p-4 text-white text-sm max-w-full overflow-hidden gap-2">
             <div className="truncate text-ellipsis">{attachment.name}</div>
             <div className="flex justify-end items-center gap-2">
               <div className="min-w-16 text-gray-400 text-right">
                 {getFormattedFileSize(attachment.size)}
               </div>
-              <button onClick={() => handleDownloadClick(attachment)}>
+              <button onClick={() => handleDownloadAttachmentClick(attachment.id)}>
                 <Download/>
               </button>
             </div>
@@ -227,6 +218,11 @@ export function StickyNote(props: StickyNoteProps) {
           const id = generateId()
 
           if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+              alert('Max file size is 10 MB')
+              return
+            }
+
             onNoteChange({
               ...note,
               attachments: [
@@ -244,24 +240,9 @@ export function StickyNote(props: StickyNoteProps) {
 
             const fileReader = new FileReader()
             fileReader.onload = event => {
-
-              console.log('file', file, event.target.result)
-              onNoteChange({
-                ...note,
-                attachments: [
-                  ...note.attachments,
-                  {
-                    id,
-                    file,
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                    content: event.target.result as string,
-                  },
-                ],
-              })
+              onAttachmentLoaded(id, event.target.result as ArrayBuffer)
             }
-            fileReader.readAsDataURL(file)
+            fileReader.readAsArrayBuffer(file)
           }
         }}
       />

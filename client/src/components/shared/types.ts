@@ -26,3 +26,11 @@ export interface Box {
   width: number
   height: number
 }
+
+export interface Attachment {
+  id: string
+  file: File | null
+  name: string
+  type: string
+  size: number
+}

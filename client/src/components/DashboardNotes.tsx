@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { v4 as uuid } from 'uuid'
 import classNames from 'classnames'
-import { generateId, getRelativePoint } from '@/components/shared/utils'
-import { Box, Point } from '@/components/shared/types'
+import {
+  arrayBufferToBase64, base64ToArrayBuffer,
+  downloadAttachment,
+  generateId,
+  getChunks,
+  getRelativePoint
+} from '@/components/shared/utils'
+import { Attachment, Box, Point } from '@/components/shared/types'
 import { Note, StickyNote } from '@/components/StickyNote'
 import {
   PeerEvent,
@@ -38,6 +43,13 @@ export function DashboardNotes(props: DashboardNotesProps) {
   const [mode, setMode] = useState<'create' | 'view'>('view')
   const boardRef = useRef<HTMLDivElement | null>(null)
   const newNoteRef = useRef<HTMLDivElement | null>(null)
+  const attachmentsRef = useRef<Map<string, {
+    attachment: Attachment
+    status: 'local' | 'placeholder' | 'downloading' | 'downloaded' | 'failed'
+    error: string | null
+    partialContent: string | null
+    content: ArrayBuffer | null
+  }>>(new Map())
   const notesRef = useRef<Note[]>([])
   const [notes, setNotes] = useState<Note[]>([])
   const box: Box = {
@@ -55,12 +67,24 @@ export function DashboardNotes(props: DashboardNotesProps) {
   const handleNoteChange = useCallback((note: Note, updateOnlyPeers = false) => {
     if (!updateOnlyPeers) {
       setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+      note.attachments.forEach(attachment => {
+        attachmentsRef.current.set(attachment.id, {
+          attachment,
+          status: 'local',
+          error: null,
+          partialContent: null,
+          content: null,
+        })
+      })
     }
 
     broadcast({
       event: 'noteupdated',
       payload: {
-        note,
+        note: {
+          ...note,
+          content: null,
+        },
       },
     })
   }, [broadcast])
@@ -74,6 +98,38 @@ export function DashboardNotes(props: DashboardNotesProps) {
       },
     })
   }, [broadcast])
+
+  const handleDownloadAttachment = useCallback((noteId: string, attachmentId: string) => {
+    const attachmentMetadata = attachmentsRef.current.get(attachmentId)
+
+    if (attachmentMetadata?.content) {
+      downloadAttachment(attachmentMetadata.attachment, attachmentMetadata.content)
+    } else if (attachmentMetadata?.status === 'placeholder' || attachmentMetadata?.status === 'failed') {
+      const note = notesRef.current.find(note => note.id === noteId)
+      console.log('requesting download', noteId, note, notesRef.current)
+
+      if (note) {
+        send(note.author.id, {
+          event: 'downloadattachment',
+          payload: {
+            noteId,
+            attachmentId,
+          },
+        })
+      }
+    } else {
+      alert('Attachment is not ready to download yet, please try again later')
+    }
+  }, [send])
+
+  const handleAttachmentLoaded = useCallback((attachmentId: string, content: ArrayBuffer) => {
+    const attachmentMetadata = attachmentsRef.current.get(attachmentId)
+
+    attachmentsRef.current.set(attachmentId, {
+      ...attachmentMetadata,
+      content,
+    })
+  }, [])
 
   useEffect(() => {
     setMode(isActive ? 'create' : 'view')
@@ -107,6 +163,16 @@ export function DashboardNotes(props: DashboardNotesProps) {
       console.log('note updated', event)
       const note = event.payload.note as Note
       setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+      note.attachments.forEach(attachment => {
+        const existingMetadata = attachmentsRef.current.get(attachment.id)
+        attachmentsRef.current.set(attachment.id, {
+          attachment,
+          status: existingMetadata?.status ?? 'placeholder',
+          error: null,
+          partialContent: null,
+          content: null,
+        })
+      })
     }
 
     function onNoteDeleted(event: PeerEvent) {
@@ -115,11 +181,107 @@ export function DashboardNotes(props: DashboardNotesProps) {
       setNotes(notes => notes.filter(n => n.id !== noteId))
     }
 
+    function onDownloadAttachment(event: PeerEvent) {
+      const { noteId, attachmentId } = event.payload
+      const attachmentMetadata = attachmentsRef.current.get(attachmentId)
+
+      if (!attachmentMetadata) {
+        sendRef.current(event.peerId, {
+          event: 'receiveattachmenterror',
+          payload: {
+            noteId,
+            attachmentId,
+            error: 'Attachment not found',
+          },
+        })
+      } else if (attachmentMetadata.status !== 'local') { // todo: maybe remove
+        sendRef.current(event.peerId, {
+          event: 'receiveattachmenterror',
+          payload: {
+            noteId,
+            attachmentId,
+            error: 'Attachment is owned by another peer',
+          },
+        })
+      } else if (!attachmentMetadata.content) {
+        sendRef.current(event.peerId, {
+          event: 'receiveattachmenterror',
+          payload: {
+            noteId,
+            attachmentId,
+            error: 'Attachment is not ready to download yet, please try again later',
+          },
+        })
+      } else {
+        const peerId = event.peerId
+        const chunkSize = 16384 // 16 KB
+        const base64 = arrayBufferToBase64(attachmentMetadata.content)
+
+        for (const { i, chunk, finished } of getChunks(base64, chunkSize)) {
+          sendRef.current(peerId, {
+            event: 'receiveattachmentchunk',
+            payload: {
+              i,
+              noteId,
+              attachmentId,
+              chunk,
+              finished,
+            },
+          })
+        }
+      }
+    }
+
+    function onReceiveAttachmentChunk(event: PeerEvent) {
+      const { attachmentId, i, chunk, finished } = event.payload
+      const attachmentMetadata = attachmentsRef.current.get(attachmentId)
+      console.log(`received chunk #${i}`)
+
+      if (!attachmentMetadata) {
+        return
+      }
+
+      if (finished) {
+        const base64 = (attachmentMetadata.partialContent ?? '') + chunk
+        const buffer = base64ToArrayBuffer(base64)
+        attachmentsRef.current.set(attachmentId, {
+          ...attachmentMetadata,
+          status: 'downloaded',
+          partialContent: null,
+          content: base64ToArrayBuffer(base64),
+        })
+        downloadAttachment(attachmentMetadata.attachment, buffer)
+      } else {
+        attachmentsRef.current.set(attachmentId, {
+          ...attachmentMetadata,
+          status: 'downloaded',
+          partialContent: (attachmentMetadata.partialContent ?? '') + chunk,
+        })
+      }
+    }
+
+    function onReceiveAttachmentError(event: PeerEvent) {
+      const { noteId, attachmentId, error } = event.payload
+      const attachmentMetadata = attachmentsRef.current.get(attachmentId)
+
+      if (attachmentMetadata) {
+        attachmentsRef.current.set(attachmentId, {
+          ...attachmentMetadata,
+          status: 'failed',
+          error,
+        })
+        alert(error)
+      }
+    }
+
     addPeerEventListener('joined', onPeerJoined)
     addPeerEventListener('notes', onNotes)
     addPeerEventListener('notecreated', onNoteCreated)
     addPeerEventListener('noteupdated', onNoteUpdated)
     addPeerEventListener('notedeleted', onNoteDeleted)
+    addPeerEventListener('downloadattachment', onDownloadAttachment)
+    addPeerEventListener('receiveattachmentchunk', onReceiveAttachmentChunk)
+    addPeerEventListener('receiveattachmenterror', onReceiveAttachmentError)
 
     return () => {
       removePeerEventListener('joined', onPeerJoined)
@@ -127,6 +289,9 @@ export function DashboardNotes(props: DashboardNotesProps) {
       removePeerEventListener('notecreated', onNoteCreated)
       removePeerEventListener('noteupdated', onNoteUpdated)
       removePeerEventListener('notedeleted', onNoteDeleted)
+      removePeerEventListener('downloadattachment', onDownloadAttachment)
+      removePeerEventListener('receiveattachmentchunk', onReceiveAttachmentChunk)
+      removePeerEventListener('receiveattachmenterror', onReceiveAttachmentError)
     }
   }, [addPeerEventListener, removePeerEventListener])
 
@@ -171,7 +336,10 @@ export function DashboardNotes(props: DashboardNotesProps) {
       broadcastRef.current({
         event: 'notecreated',
         payload: {
-          note,
+          note: {
+            ...note,
+            content: null,
+          },
         },
       })
     }
@@ -211,6 +379,8 @@ export function DashboardNotes(props: DashboardNotesProps) {
           note={note}
           onNoteChange={handleNoteChange}
           onNoteDelete={handleNoteDelete}
+          onDownloadAttachment={handleDownloadAttachment}
+          onAttachmentLoaded={handleAttachmentLoaded}
         />
       ))}
     </div>

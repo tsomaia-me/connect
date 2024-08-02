@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid'
-import { Box, Point, TimePoint } from '@/components/shared/types'
+import { Attachment, Box, Point, TimePoint } from '@/components/shared/types'
 
 export function getRelativePoint([x, y]: Point, container: Box): Point
 export function getRelativePoint([x, y, time]: TimePoint, container: Box): TimePoint
@@ -27,4 +27,54 @@ export function getFormattedFileSize(size: number) {
   }
 
   return `${size.toFixed(2)} ${units[unitIndex]}`
+}
+
+export function downloadAttachment(attachment: Attachment, content: ArrayBuffer) {
+  const a = document.createElement('a')
+  const blob = new Blob([content], { type: attachment.type })
+  a.href = URL.createObjectURL(blob)
+  a.download = attachment.name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+export function arrayBufferToBase64(buffer: ArrayBuffer) {
+  let binary = ''
+  const bytes = new Uint8Array(buffer)
+  const l = bytes.byteLength
+
+  for (let i = 0; i < l; ++i) {
+    binary += String.fromCharCode(bytes[i])
+  }
+
+  return btoa(binary)
+}
+
+export function base64ToArrayBuffer(base64: string) {
+  let binary = atob(base64)
+  const l = binary.length
+  const bytes = new Uint8Array(l)
+
+  for (let i = 0; i < l; ++i) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+
+  return bytes.buffer
+}
+
+export function* getChunks(data: string, chunkSize: number) {
+  let offset = 0
+  let i = 0
+
+  while (offset < data.length) {
+    const chunk = data.slice(offset, offset + chunkSize)
+    offset += chunkSize
+    yield {
+      i,
+      chunk,
+      finished: offset >= data.length,
+    }
+    ++i
+  }
 }
