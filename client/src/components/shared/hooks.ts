@@ -1,5 +1,5 @@
 import { DependencyList, useCallback, useEffect, useState } from 'react'
-import { FieldParams, SocketResponse } from '@/shared/types'
+import { FieldParams, SocketResponse } from '@/components/shared/types'
 import { useSocket } from '@/components/SocketProvider'
 
 export function useMutation<T extends Function>(callback: T, deps: DependencyList) {

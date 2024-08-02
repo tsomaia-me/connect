@@ -1,7 +1,7 @@
-import { ButtonHTMLAttributes, DetailedHTMLProps } from 'react'
 import classNames from 'classnames'
+import { HtmlButtonProps } from '@/components/shared/types'
 
-export interface ButtonProps extends DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> {
+export interface ButtonProps extends HtmlButtonProps {
   variant?: 'primary' | 'danger'
 }
 

@@ -1,3 +1,5 @@
+import { ButtonHTMLAttributes, DetailedHTMLProps } from 'react'
+
 export interface FieldParams<T extends string | number | null> {
   value: T
   onChange: (value: T) => void
@@ -15,3 +17,5 @@ export interface SocketErrorResponse {
 }
 
 export type SocketResponse<T> = SocketSuccessResponse<T> | SocketErrorResponse
+
+export type HtmlButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>

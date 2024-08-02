@@ -1,5 +1,5 @@
 import { BASE_URL } from '@/api/constants'
-import { useMutation } from '@/shared/hooks'
+import { useMutation } from '@/components/shared/hooks'
 
 export function useAuth() {
   return useMutation(async () => {

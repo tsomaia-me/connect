@@ -1,7 +1,7 @@
 import { Room, User } from '@/app.models'
 import { Dashboard } from '@/components/Dashboard'
 import { useEffect, useRef, useState } from 'react'
-import { useEmitter } from '@/shared/hooks'
+import { useEmitter } from '@/components/shared/hooks'
 import { useSocket } from '@/components/SocketProvider'
 import { Peer, PeersMap, PeersRecord } from '@/app.types'
 import { RoomControlsProvider } from '@/components/RoomControlsProvider'

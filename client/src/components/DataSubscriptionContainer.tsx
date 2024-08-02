@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Room, User } from '@/app.models'
-import { useEmitter, useRealtimeData } from '@/shared/hooks'
+import { useEmitter, useRealtimeData } from '@/components/shared/hooks'
 import { PeerConnectionContainer } from '@/components/PeerConnectionContainer'
 
 export interface DataSubscriptionContainerProps {

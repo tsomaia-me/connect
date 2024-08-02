@@ -1,14 +1,14 @@
 'use client'
 
-import { Button } from '@/shared/Button'
-import { InputField } from '@/shared/Field'
+import { Button } from '@/components/shared/Button'
+import { InputField } from '@/components/shared/Field'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCreateRoom, useFetchRoom, useLogin } from '@/hooks'
 import { User } from '@/app.models'
 import { isHttpError } from '@/app.utils'
 import classNames from 'classnames'
-import { useField } from '@/shared/hooks'
+import { useField } from '@/components/shared/hooks'
 
 const STORE_USER_KEY = '@store/user'
 
