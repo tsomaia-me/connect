@@ -4,8 +4,8 @@ import { FilePen } from '@/components/icons/FilePen'
 import { MouseEvent } from 'react'
 
 export interface DashboardControlsProps {
-  selectedControl: DashboardControl
-  onSelectControl: (control: DashboardControl, event: MouseEvent<HTMLButtonElement>) => void
+  selectedControl: DashboardControl | null
+  onSelectControl: (control: DashboardControl | null, event: MouseEvent<HTMLButtonElement>) => void
 }
 
 export type DashboardControl = 'pen' | 'note'
