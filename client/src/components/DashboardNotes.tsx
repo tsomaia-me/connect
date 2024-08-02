@@ -81,10 +81,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
     broadcast({
       event: 'noteupdated',
       payload: {
-        note: {
-          ...note,
-          content: null,
-        },
+        note,
       },
     })
   }, [broadcast])
@@ -336,10 +333,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
       broadcastRef.current({
         event: 'notecreated',
         payload: {
-          note: {
-            ...note,
-            content: null,
-          },
+          note,
         },
       })
     }

@@ -41,8 +41,12 @@ export function StickyNote(props: StickyNoteProps) {
   noteRef.current = note
 
   const handleMoveDown = useCallback(() => {
+    if (user.id !== note.author.id) {
+      return
+    }
+
     setIsMoving(true)
-  }, [])
+  }, [user, note])
   const handleNoteContentChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     if (user.id !== note.author.id) {
       return
