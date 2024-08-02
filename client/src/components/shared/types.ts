@@ -19,3 +19,10 @@ export interface SocketErrorResponse {
 export type SocketResponse<T> = SocketSuccessResponse<T> | SocketErrorResponse
 
 export type HtmlButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>
+
+export type Point = [x: number, y: number]
+export type TimePoint = [x: number, y: number, time: number]
+export interface Box {
+  width: number
+  height: number
+}

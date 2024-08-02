@@ -20,6 +20,7 @@ export class JoinRoomModel {
 
 export class Participant {
   user: User
+  nonce: string
 }
 
 export class Room {

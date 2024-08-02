@@ -17,6 +17,21 @@ const config: Config = {
     //       "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
     //   },
     // },
+    extend: {
+      animation: {
+        'enter-in': 'scale-in 150ms ease-in forwards',
+      },
+      keyframes: {
+        'scale-in': {
+          '0%': {
+            transform: 'scale(0)',
+          },
+          '100%': {
+            transform: 'scale(1.2)',
+          },
+        }
+      }
+    }
   },
   plugins: [
     require('flowbite/plugin'),

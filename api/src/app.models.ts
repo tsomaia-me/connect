@@ -18,6 +18,7 @@ export class User {
 
 export class Participant {
   user: User
+  nonce: string
 }
 
 export class CreateRoomModel {

@@ -6,10 +6,11 @@ import {
   WebSocketGateway
 } from '@nestjs/websockets'
 import { Socket } from 'socket.io'
+import { v4 as uuid } from 'uuid'
 import { UserService } from './user.service'
 import { RoomService } from './room.service'
 import { JoinRoomSignal, OfferSignal } from './app.models'
-import { RoomEvent, SignalType, SocketEvent, UserEvent } from './app.types'
+import { RoomEvent, SocketEvent, UserEvent } from './app.types'
 import { toProtectedSerializedRoom, toProtectedSerializedUser } from './app.serializers'
 import { filter, map, startWith, Subject } from 'rxjs'
 import { toSocketErrorResponse, toSocketEvent, toSocketSuccessResponse } from './app.utils'
@@ -73,6 +74,7 @@ export class AppGateway implements OnGatewayDisconnect {
 
     const updatedRoom = await this.roomService.updateByKey(room.key, builder => builder.withParticipant({
       user,
+      nonce: `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`,
     }))
 
     this.events$.next({

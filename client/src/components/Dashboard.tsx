@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { MouseEvent, useCallback, useEffect, useState } from 'react'
 import {
   useAddPeerEventListener,
   useBroadcaster,
@@ -12,6 +12,7 @@ import {
 import { DrawingCanvas } from '@/components/DrawingCanvas'
 import { DashboardFooter } from '@/components/DashboardFooter'
 import { DashboardControl, DashboardControls } from '@/components/DashboardControls'
+import { DashboardNotes } from '@/components/DashboardNotes'
 
 export function Dashboard() {
   const user = useUser()
@@ -23,17 +24,23 @@ export function Dashboard() {
   const addPeerEventListener = useAddPeerEventListener()
   const removePeerEventListener = useRemovePeerEventListener()
   const [selectedControl, setSelectedControl] = useState<DashboardControl>('pen')
+  const [controlPosition, setControlPosition] = useState<[number, number]>([0, 0])
+  const handleSelectControl = useCallback((control: DashboardControl, event: MouseEvent<HTMLButtonElement>) => {
+    setSelectedControl(control)
+    setControlPosition([event.nativeEvent.clientX, event.nativeEvent.clientY])
+  }, [])
 
   useEffect(() => {
 
   }, [])
 
   return (
-    <div className="flex flex-row justify-center items-center h-full dark:bg-gray-900 relative">
+    <div className="flex flex-row justify-center items-center h-full dark:bg-gray-900 relative overflow-hidden">
       <DrawingCanvas isActive={selectedControl === 'pen'}/>
+      <DashboardNotes isActive={selectedControl === 'note'} controlPosition={controlPosition}/>
       <DashboardControls
         selectedControl={selectedControl}
-        onSelectControl={setSelectedControl}
+        onSelectControl={handleSelectControl}
       />
       <DashboardFooter/>
     </div>

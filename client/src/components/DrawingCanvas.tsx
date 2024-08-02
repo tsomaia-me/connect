@@ -9,12 +9,12 @@ import {
   useUser
 } from '@/components/RoomControlsProvider'
 import { Room, User } from '@/app.models'
+import { TimePoint } from '@/components/shared/types'
+import { getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
 
 export interface DrawingCanvasProps {
   isActive: boolean
 }
-
-export type Point = [x: number, y: number, time: number]
 
 export function DrawingCanvas(props: DrawingCanvasProps) {
   const { isActive } = props
@@ -31,7 +31,7 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
   const addPeerEventListenerRef = useRef(addPeerEventListener)
   const removePeerEventListenerRef = useRef(removePeerEventListener)
   const isActiveRef = useRef<boolean>(isActive)
-  const drawingRef = useRef<Point[][]>([])
+  const drawingRef = useRef<TimePoint[][]>([])
   const roomRef = useRef<Room>(room)
   const userRef = useRef<User>(user)
 
@@ -44,44 +44,35 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
   removePeerEventListenerRef.current = removePeerEventListener
 
   useEffect(() => {
-    const canvasContainer = canvasContainerRef.current
-    const canvas = canvasRef.current
 
-    if (!canvasContainer || !canvas) {
+    if (!canvasContainerRef.current || !canvasRef.current) {
       return
     }
 
+    const canvasContainer = canvasContainerRef.current!
+    const canvas = canvasRef.current!
     const animationTasks: Array<() => void> = []
     const { width, height } = canvasContainer.getBoundingClientRect()
     canvas.width = width
     canvas.height = height
-    let widthToHeightRatio = width / height
 
     const ctx = canvas.getContext('2d')
     let isMouseActive = false
     let points = []
-    const peerPoints = new Map<string, Point[]>()
+    const peerPoints = new Map<string, TimePoint[]>()
 
     function schedule(task: () => void) {
       animationTasks.unshift(task)
     }
 
-    function getRelativePoint([x, y, time]): Point {
-      return [x / canvas!.width, y / canvas!.height, time] as Point
-    }
-
-    function getAbsolutePoint([x, y, time]): Point {
-      return [Math.round(x * canvas!.width), Math.round(y * canvas!.height), time] as Point
-    }
-
     function onWindowResize() {
-      const { width, height } = canvasContainer!.getBoundingClientRect()
-      canvas!.width = width
-      canvas!.height = height
-      widthToHeightRatio = width / height
+      const { width, height } = canvasContainer.getBoundingClientRect()
+      canvas.width = width
+      canvas.height = height
+      redraw()
     }
 
-    function draw(points: Point[]) {
+    function draw(points: TimePoint[]) {
       if (points.length < 4) {
         return
       }
@@ -126,28 +117,28 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
       }
 
       isMouseActive = true
-      const point = [event.offsetX, event.offsetY, performance.now()]
+      const point: TimePoint = [event.offsetX, event.offsetY, performance.now()]
       points = [point]
-      drawingRef.current.push([getRelativePoint(point)])
+      drawingRef.current.push([getRelativePoint(point, canvas)])
       broadcastRef.current({
         event: 'drawstart',
         payload: {
-          point: getRelativePoint(points[0]),
+          point: getRelativePoint(points[0], canvas),
         },
       })
     }
 
     function onMouseMove(event: { offsetX: number; offsetY: number }) {
       if (isMouseActive) {
-        const point = [event.offsetX, event.offsetY, performance.now()]
+        const point: TimePoint = [event.offsetX, event.offsetY, performance.now()]
 
         points.push(point)
         schedule(() => draw(points))
-        drawingRef.current[drawingRef.current.length - 1]?.push(getRelativePoint(point))
+        drawingRef.current[drawingRef.current.length - 1]?.push(getRelativePoint(point, canvas))
         broadcastRef.current({
           event: 'draw',
           payload: {
-            point: getRelativePoint(point),
+            point: getRelativePoint(point, canvas),
           },
         })
       }
@@ -177,14 +168,14 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
 
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.clearRect(0, 0, canvas!.width ?? 0, canvas!.height ?? 0)
+      ctx.clearRect(0, 0, canvas.width ?? 0, canvas.height ?? 0)
       ctx.restore()
 
       for (const fragment of drawingRef.current) {
         if (fragment.length > 1) {
-          peerPoints.set(event.peerId, [getAbsolutePoint(fragment[0])])
+          peerPoints.set(event.peerId, [getAbsolutePoint(fragment[0], canvas)])
           for (let i = 1; i < fragment.length; ++i) {
-            const point = getAbsolutePoint(fragment[i])
+            const point = getAbsolutePoint(fragment[i], canvas)
             const points = peerPoints.get(event.peerId) ?? []
             points.push(point)
             draw(points)
@@ -194,12 +185,26 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
       }
     }
 
+    function redraw() {
+      for (const fragment of drawingRef.current) {
+        if (fragment.length > 1) {
+          points = [getAbsolutePoint(fragment[0], canvas)]
+          for (let i = 1; i < fragment.length; ++i) {
+            const point = getAbsolutePoint(fragment[i], canvas)
+            points.push(point)
+            draw(points)
+          }
+          points = []
+        }
+      }
+    }
+
     function onPeerDrawStart(event: PeerEvent) {
-      peerPoints.set(event.peerId, [getAbsolutePoint(event.payload.point)])
+      peerPoints.set(event.peerId, [getAbsolutePoint(event.payload.point as TimePoint, canvas)])
     }
 
     function onPeerDraw(event: PeerEvent) {
-      const point = getAbsolutePoint(event.payload.point)
+      const point = getAbsolutePoint(event.payload.point as TimePoint, canvas)
       const points = peerPoints.get(event.peerId) ?? []
       points.push(point)
       schedule(() => draw(points))
