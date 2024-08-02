@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import classNames from 'classnames'
-import { getRelativePoint } from '@/components/shared/utils'
+import { generateId, getRelativePoint } from '@/components/shared/utils'
 import { Box, Point } from '@/components/shared/types'
 import { Note, StickyNote } from '@/components/StickyNote'
 import {
@@ -153,8 +153,8 @@ export function DashboardNotes(props: DashboardNotesProps) {
 
     function onBoardClick(event: MouseEvent) {
       const note: Note = {
-        id: `${uuid()}_${Date.now()}_${Math.random() * 1000000000}`,
-        width: 224,
+        id: generateId(),
+        width: 256,
         height: 224,
         relativePoint: getRelativePoint([event.clientX, event.clientY] as Point, {
           width: boardEl.offsetWidth,
@@ -163,6 +163,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
         content: '',
         mode: 'edit',
         author: { ...user },
+        attachments: [],
       }
       setNotes(existingNotes => [...existingNotes, note])
       setMode('view')
@@ -199,7 +200,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
       {mode === 'create' && (
         <div
           ref={newNoteRef}
-          className="absolute bg-gray-600 border border-gray-700 rounded-2xl w-56 h-56 cursor-grabbing pointer-events-auto animate-enter-in"
+          className="absolute bg-gray-600 border border-gray-700 rounded-2xl w-64 h-56 cursor-grabbing pointer-events-auto animate-enter-in"
         ></div>
       )}
       {notes.map(note => (

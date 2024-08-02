@@ -1,11 +1,12 @@
-import { Note } from '@/components/DashboardNotes'
-import { getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
+import { generateId, getAbsolutePoint, getFormattedFileSize, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
 import { Box, Point } from '@/components/shared/types'
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
 import { Bin } from '@/components/icons/Bin'
+import { Paperclip } from '@/components/icons/Paperclip'
+import { Download } from '@/components/icons/Download'
 
 export interface StickyNoteProps {
   user: User
@@ -13,6 +14,15 @@ export interface StickyNoteProps {
   note: Note
   onNoteChange: (note: Note, updateOnlyPeers?: boolean) => void
   onNoteDelete: (noteId: string) => void
+}
+
+export interface Attachment {
+  id: string
+  file: File | null
+  name: string
+  type: string
+  size: number
+  content: string | null
 }
 
 export interface Note {
@@ -23,6 +33,7 @@ export interface Note {
   content: string
   mode: 'edit' | 'view'
   author: User
+  attachments: Attachment[]
 }
 
 export function StickyNote(props: StickyNoteProps) {
@@ -32,6 +43,7 @@ export function StickyNote(props: StickyNoteProps) {
   const noteRef = useRef<Note>(note)
   const noteElRef = useRef<HTMLDivElement | null>(null)
   const moveHandleRef = useRef<HTMLButtonElement | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
 
   noteRef.current = note
 
@@ -74,6 +86,21 @@ export function StickyNote(props: StickyNoteProps) {
       mode: 'view',
     })
   }, [note, onNoteChange])
+  const handleAttachClick = useCallback(() => {
+    if (fileRef.current) {
+      fileRef.current!.click()
+    }
+  }, [])
+  const handleDownloadClick = useCallback((attachment: Attachment) => {
+    if (attachment.content) {
+      const a = document.createElement('a')
+      a.href = attachment.content
+      a.download = attachment.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  }, [note])
 
   useEffect(() => {
     if (!isMoving && user.id === note.author.id && note.mode === 'edit' && textareaRef.current) {
@@ -123,7 +150,7 @@ export function StickyNote(props: StickyNoteProps) {
       ref={noteElRef}
       className={
         classNames(
-          'absolute bg-gray-600 border border-gray-700 rounded-2xl w-56 min-h-56 pointer-events-auto shadow-md',
+          'absolute bg-gray-600 border border-gray-700 rounded-2xl w-64 min-h-56 pointer-events-auto shadow-md',
         )
       }
       style={{
@@ -151,12 +178,36 @@ export function StickyNote(props: StickyNoteProps) {
         onBlur={handleNoteBlur}
       />
 
+      <div className="mb-4 border-b border-gray-400">
+        {note.attachments.map(attachment => (
+          <div key={attachment.id} className="flex justify-between items-center p-4 text-white text-sm max-w-full overflow-hidden gap-2">
+            <div className="truncate text-ellipsis">{attachment.name}</div>
+            <div className="flex justify-end items-center gap-2">
+              <div className="min-w-16 text-gray-400 text-right">
+                {getFormattedFileSize(attachment.size)}
+              </div>
+              <button onClick={() => handleDownloadClick(attachment)}>
+                <Download/>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="flex justify-between items-center px-2 pb-2">
         <div className="pl-2 text-gray-400">
           {note.author.username}
         </div>
 
-        <div>
+        <div className="flex justify-end items-center gap-4">
+          <button className={
+            classNames(
+              user.id === note.author.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+            )
+          } onClick={handleAttachClick}>
+            <Paperclip/>
+          </button>
+
           <button className={
             classNames(
               user.id === note.author.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
@@ -166,6 +217,54 @@ export function StickyNote(props: StickyNoteProps) {
           </button>
         </div>
       </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        onChange={e => {
+          const file = (e.target as HTMLInputElement)?.files?.[0]
+          const id = generateId()
+
+          if (file) {
+            onNoteChange({
+              ...note,
+              attachments: [
+                ...note.attachments,
+                {
+                  id,
+                  file,
+                  name: file.name,
+                  type: file.type,
+                  size: file.size,
+                  content: null,
+                },
+              ],
+            })
+
+            const fileReader = new FileReader()
+            fileReader.onload = event => {
+
+              console.log('file', file, event.target.result)
+              onNoteChange({
+                ...note,
+                attachments: [
+                  ...note.attachments,
+                  {
+                    id,
+                    file,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    content: event.target.result as string,
+                  },
+                ],
+              })
+            }
+            fileReader.readAsDataURL(file)
+          }
+        }}
+      />
     </div>
   )
 }
