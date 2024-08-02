@@ -52,8 +52,11 @@ export function DashboardNotes(props: DashboardNotesProps) {
   addPeerEventListenerRef.current = addPeerEventListener
   removePeerEventListenerRef.current = removePeerEventListener
 
-  const handleNoteChange = useCallback((note: Note) => {
-    setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+  const handleNoteChange = useCallback((note: Note, updateOnlyPeers = false) => {
+    if (!updateOnlyPeers) {
+      setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+    }
+
     broadcast({
       event: 'noteupdated',
       payload: {

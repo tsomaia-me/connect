@@ -1,8 +1,8 @@
 import { Note } from '@/components/DashboardNotes'
-import { getAbsolutePoint } from '@/components/shared/utils'
+import { getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
 import { Box, Point } from '@/components/shared/types'
-import { ChangeEvent, useCallback, useEffect, useRef } from 'react'
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
 import { Bin } from '@/components/icons/Bin'
@@ -11,7 +11,7 @@ export interface StickyNoteProps {
   user: User
   box: Box
   note: Note
-  onNoteChange: (note: Note) => void
+  onNoteChange: (note: Note, updateOnlyPeers?: boolean) => void
   onNoteDelete: (noteId: string) => void
 }
 
@@ -28,6 +28,16 @@ export interface Note {
 export function StickyNote(props: StickyNoteProps) {
   const { user, box, note, onNoteChange, onNoteDelete } = props
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [isMoving, setIsMoving] = useState(false)
+  const noteRef = useRef<Note>(note)
+  const noteElRef = useRef<HTMLDivElement | null>(null)
+  const moveHandleRef = useRef<HTMLButtonElement | null>(null)
+
+  noteRef.current = note
+
+  const handleMoveDown = useCallback(() => {
+    setIsMoving(true)
+  }, [])
   const handleNoteContentChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     if (user.id !== note.author.id) {
       return
@@ -66,13 +76,51 @@ export function StickyNote(props: StickyNoteProps) {
   }, [note, onNoteChange])
 
   useEffect(() => {
-    if (user.id === note.author.id && note.mode === 'edit' && textareaRef.current) {
+    if (!isMoving && user.id === note.author.id && note.mode === 'edit' && textareaRef.current) {
       textareaRef.current!.focus()
     }
-  }, [user, note.mode])
+  }, [isMoving, user, note.mode])
+
+  useEffect(() => {
+    if (!isMoving || !noteElRef.current) {
+      return
+    }
+
+    const noteEl = noteElRef.current!
+
+    function setPosition([x, y]) {
+      const left = x - (noteEl.offsetWidth / 2)
+      const top = y - (moveHandleRef.current!.offsetTop + (moveHandleRef.current!.offsetHeight / 2))
+      noteEl.style.left = `${left}px`
+      noteEl.style.top = `${top}px`
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      const point = [event.clientX, event.clientY]
+      setPosition(point)
+      onNoteChange({
+        ...noteRef.current,
+        relativePoint: getRelativePoint(point as Point, box),
+      }, true)
+    }
+
+    function onMouseUp() {
+      setIsMoving(false)
+      onNoteChange(noteRef.current)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [isMoving])
 
   return (
     <div
+      ref={noteElRef}
       className={
         classNames(
           'absolute bg-gray-600 border border-gray-700 rounded-2xl w-56 min-h-56 pointer-events-auto shadow-md',
@@ -84,7 +132,11 @@ export function StickyNote(props: StickyNoteProps) {
       }}
     >
       <div className="flex justify-center">
-        <button className={classNames(user.id === note.author.id ? 'cursor-grab' : 'cursor-not-allowed')}>
+        <button
+          ref={moveHandleRef}
+          className={classNames(user.id === note.author.id ? 'cursor-grab' : 'cursor-not-allowed')}
+          onMouseDown={handleMoveDown}
+        >
           <HDots/>
         </button>
       </div>
