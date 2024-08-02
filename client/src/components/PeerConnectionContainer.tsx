@@ -35,10 +35,11 @@ export function PeerConnectionContainer(props: RoomViewProps) {
     const selfIndex = room.participants.map((participant) => participant.user.id).indexOf(userId)
 
     room.participants.forEach(async participant => {
-      if (participant.user.id === userId || peersRef.current[participant.user.id]) {
+      if (participant.user.id === userId || (peersRef.current[participant.user.id]?.connection && peersRef.current[participant.user.id].connection.connectionState !== 'new')) {
         console.log('cancelling offer', {
           isSameUser: participant.user.id === userId,
           alreadyConnected: peersRef.current[participant.user.id],
+          connectionState: peersRef.current[participant.user.id]?.connection.connectionState,
         })
         return
       }

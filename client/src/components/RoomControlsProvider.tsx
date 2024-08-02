@@ -95,7 +95,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
 
     bufferRef.current.get(id)?.push({
       ...event,
-      senderId: userId,
+      peerId: userId,
     } as PeerEvent)
   }, [userId])
   const send = useCallback((id: string, event: PeerEvent) => {
@@ -105,7 +105,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
       try {
         dataChannel.send(JSON.stringify({
           ...event,
-          senderId: userId,
+          peerId: userId,
         }))
       } catch (error) {
         console.log(error)
