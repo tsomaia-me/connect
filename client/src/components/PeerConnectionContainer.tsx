@@ -15,10 +15,10 @@ export interface RoomViewProps {
 
 const ICE_SERVERS: RTCIceServer[] = [
   {
-    urls: 'stun:stun.tsomaia.me:3478',
+    urls: 'stun:165.232.76.90:3478',
   },
   {
-    urls: 'turn:turn.tsomaia.me:3478',
+    urls: 'turn:165.232.76.90:3478',
     username: 'tsomaiame',
     credential: 'dsdgm31990',
   },
