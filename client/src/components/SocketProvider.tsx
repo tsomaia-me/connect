@@ -16,7 +16,7 @@ export function SocketProvider(props: SocketProviderProps) {
   const [socket, setSocket] = useState<Socket | null>(null)
 
   useEffect(() => {
-    const socket = io(url)
+    const socket = io(url, { secure: true })
     setSocket(socket)
 
     return () => {
