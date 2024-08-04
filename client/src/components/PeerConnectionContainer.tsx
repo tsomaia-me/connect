@@ -15,7 +15,7 @@ export interface RoomViewProps {
 
 const ICE_SERVERS = [
   {
-    urls: 'stun:stun.services.mozilla.com:3478',
+    urls: 'stun:stun.tsomaia.me',
   }
 ]
 
