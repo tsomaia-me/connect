@@ -13,10 +13,15 @@ export interface RoomViewProps {
   room: Room
 }
 
-const ICE_SERVERS = [
+const ICE_SERVERS: RTCIceServer[] = [
   {
-    urls: 'stun:stun.tsomaia.me',
-  }
+    urls: 'stun:stun.tsomaia.me:3478',
+  },
+  {
+    urls: 'turn:turn.tsomaia.me:3478',
+    username: 'tsomaiame',
+    credential: 'dsdgm31990',
+  },
 ]
 
 export function PeerConnectionContainer(props: RoomViewProps) {
