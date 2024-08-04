@@ -13,10 +13,13 @@ export interface RoomViewProps {
   room: Room
 }
 
-const ICE_SERVERS: RTCIceServer[] = [
+const ICE_SERVERS = [
   {
-    urls: 'stun:165.232.76.90:3478',
+    urls: 'stun:stun.services.mozilla.com:3478',
   },
+  // {
+  //   urls: 'stun:165.232.76.90:3478',
+  // },
   // {
   //   urls: 'turn:165.232.76.90:3478',
   //   username: 'tsomaiame',
