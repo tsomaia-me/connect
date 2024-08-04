@@ -2,7 +2,7 @@ import '../globals.css'
 import { FetchProvider } from '@/components/FetchProvider'
 import { AppProps } from 'next/app'
 
-const API_BASE_URL = 'http://localhost:8080/api'
+const API_BASE_URL = 'https://signaling.tsomaia.me/api'
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
