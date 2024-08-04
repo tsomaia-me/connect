@@ -105,28 +105,40 @@ export function StickyNote(props: StickyNoteProps) {
 
     const noteEl = noteElRef.current!
 
-    function setPosition([x, y]) {
+    function getPosition([x, y]) {
       const left = x - (noteEl.offsetWidth / 2)
       const top = y - (moveHandleRef.current!.offsetTop + (moveHandleRef.current!.offsetHeight / 2))
+
+      return {
+        left,
+        top,
+      }
+    }
+
+    function setPosition([x, y]) {
+      const { left, top } = getPosition([x, y])
       noteEl.style.left = `${left}px`
       noteEl.style.top = `${top}px`
     }
 
     function onMouseMove(event: MouseEvent) {
       const point = [event.clientX, event.clientY]
+      const { left, top } = getPosition(point)
       setPosition(point)
       onNoteChange({
         ...noteRef.current,
-        relativePoint: getRelativePoint(point as Point, box),
+        relativePoint: getRelativePoint([left, top] as Point, box),
       }, true)
     }
 
     function onMouseUp(event: MouseEvent) {
       const point = [event.clientX, event.clientY]
+      const { left, top } = getPosition(point)
       setIsMoving(false)
+      setPosition(point)
       onNoteChange({
         ...noteRef.current,
-        relativePoint: getRelativePoint(point as Point, box),
+        relativePoint: getRelativePoint([left, top] as Point, box),
       })
     }
 
