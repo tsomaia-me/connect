@@ -1,4 +1,4 @@
-import { AnswerSignal, Room, User } from '@/app.models'
+import { Room, User } from '@/app.models'
 import { Dashboard } from '@/components/Dashboard'
 import { useEffect, useRef, useState } from 'react'
 import { useEmitter } from '@/components/shared/hooks'
@@ -42,6 +42,24 @@ export function PeerConnectionContainer(props: RoomViewProps) {
 
     const selfIndex = room.participants.map((participant) => participant.user.id).indexOf(userId)
 
+    if (peersRef.current) {
+      for (const peerId of Object.keys(peersRef.current)) {
+        const peer = peersRef.current[peerId]
+        const participant = room.participants.find(p => p.user.id === peerId)
+
+        if (!participant || participant.nonce !== peer.participant.nonce) {
+          if (peer.connection.connectionState !== 'closed') {
+            peer.dataChannel.close()
+            peer.connection.close()
+          }
+
+          delete peersRef.current[peerId]
+        }
+      }
+    }
+
+    setPeers(new Map(Object.entries({ ...peersRef.current })))
+
     room.participants.forEach(async participant => {
       const existingParticipant = peersRef.current[participant.user.id]?.participant
 
@@ -55,6 +73,7 @@ export function PeerConnectionContainer(props: RoomViewProps) {
         return
       }
 
+      console.log('created RTCPeerConnection')
       const peerConnection = new RTCPeerConnection({
         iceServers: ICE_SERVERS,
       })
@@ -67,12 +86,10 @@ export function PeerConnectionContainer(props: RoomViewProps) {
         connection: peerConnection,
         dataChannel: dataChannel,
       }
-      peersRef.current[participant.user.id] = peer
-      setPeers(new Map(Object.entries({ ...peersRef.current })))
 
       peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          void emit('icecandidate', {
+          emit('icecandidate', {
             senderId: user.id,
             receiverId: participant.user.id,
             payload: event.candidate,
@@ -81,6 +98,8 @@ export function PeerConnectionContainer(props: RoomViewProps) {
       }
 
       dataChannel.onopen = () => {
+        peersRef.current[participant.user.id] = peer
+        setPeers(new Map(Object.entries({ ...peersRef.current })))
         console.log('data channel opened')
       }
 
@@ -102,22 +121,38 @@ export function PeerConnectionContainer(props: RoomViewProps) {
       async function offer() {
         const offer = await peerConnection.createOffer()
         await peerConnection.setLocalDescription(offer)
-        const answer = await emit<AnswerSignal>('offer', {
+
+        emit('offer', {
           senderId: user.id,
           receiverId: participant.user.id,
           payload: offer,
         })
-        console.log('received answer', answer.payload)
-        await peerConnection.setRemoteDescription(answer.payload)
-        socket.on(`icecandidate:${participant.user.id}`, async candidate => {
-          console.log('received icecandidate', candidate.payload, 'with answer', answer.payload)
-          await peerConnection.addIceCandidate(candidate.payload)
-        })
       }
+
+      socket.on('icecandidate', async candidate => {
+        console.log('received icecandidate', candidate.payload)
+        if (peerConnection.remoteDescription) {
+          console.log('adding icecandidate', candidate.payload)
+          await peerConnection.addIceCandidate(candidate.payload)
+        } else {
+          console.log('ignoring icecandidate because remote description is not set yet', candidate.payload)
+        }
+      })
 
       if (selfIndex % 2 === 0) {
         console.log(`even parity ${selfIndex}, initiating offer`)
         console.log('making initial offer')
+
+        socket.on('answer', async answer => {
+          console.log('received answer', answer.payload)
+          if (peerConnection.signalingState !== 'stable') {
+            await peerConnection.setRemoteDescription(answer.payload)
+            console.log('remote description set')
+          } else {
+            console.log('ignoring setting remote description because peer connection is in stable state')
+          }
+        })
+
         await offer()
 
         peerConnection.onnegotiationneeded = async () => {
@@ -126,23 +161,19 @@ export function PeerConnectionContainer(props: RoomViewProps) {
         }
       } else {
         console.log(`odd parity ${selfIndex}, waiting for offers`)
-        socket.on('offer', async (offer, callback) => {
+        socket.on('offer', async offer => {
           console.log('received offer', offer)
 
           await peerConnection.setRemoteDescription(offer.payload)
           const answer = await peerConnection.createAnswer()
           await peerConnection.setLocalDescription(answer)
           console.log('answering', answer)
-          await callback({
+          emit('answer', {
             senderId: user.id,
             receiverId: offer.senderId,
             payload: answer,
           })
-
-          socket.on(`icecandidate:${offer.senderId}`, async candidate => {
-            console.log('received icecandidate', candidate.payload, 'with offer', offer.payload)
-            await peerConnection.addIceCandidate(candidate.payload)
-          })
+          console.log('answered', answer)
         })
       }
     })

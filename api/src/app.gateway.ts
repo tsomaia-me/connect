@@ -99,7 +99,7 @@ export class AppGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage('icecandidate')
   async icecandidate(@MessageBody() data: OfferSignal) {
-    return await this.send(data.receiverId, `icecandidate:${data.senderId}`, data)
+    return await this.send(data.receiverId, 'icecandidate', data)
   }
 
   async send(receiverId: string, event: string, message: unknown) {
@@ -112,9 +112,7 @@ export class AppGateway implements OnGatewayDisconnect {
     const user = await this.userService.findById(receiverId)
     console.log('emitting', event, 'to', user?.username)
 
-    return await new Promise(resolve => {
-      connection.emit(event, message, response => resolve(toSocketSuccessResponse(response)))
-    })
+    connection.emit(event, message)
   }
 
   async handleDisconnect(socket: Socket) {

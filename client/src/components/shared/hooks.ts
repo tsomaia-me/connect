@@ -34,19 +34,11 @@ export function useField<T extends string | number | null>(initialValue: T): Fie
   } as FieldParams<T>
 }
 
-export function useEmitter(): <T>(message: string, payload: unknown) => Promise<T> {
+export function useEmitter(): <T>(message: string, payload: unknown) => void {
   const socket = useSocket()
 
-  return useCallback(async <T>(message: string, payload: unknown): Promise<T> => {
-    return new Promise<T>((resolve, reject) => {
-      socket.emit(message, payload, (response: SocketResponse<T>) => {
-        if (response.ok) {
-          resolve(response.payload)
-        } else {
-          reject(response)
-        }
-      })
-    })
+  return useCallback(async (message: string, payload: unknown) => {
+    socket.emit(message, payload)
   }, [socket])
 }
 
