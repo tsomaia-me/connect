@@ -20,11 +20,11 @@ const ICE_SERVERS = [
   // {
   //   urls: 'stun:165.232.76.90:3478',
   // },
-  // {
-  //   urls: 'turn:165.232.76.90:3478',
-  //   username: 'tsomaiame',
-  //   credential: 'dsdgm31990',
-  // },
+  {
+    urls: 'turn:165.232.76.90:3478',
+    username: 'tsomaiame',
+    credential: 'dsdgm31990',
+  },
 ]
 
 export function PeerConnectionContainer(props: RoomViewProps) {
