@@ -36,28 +36,28 @@ const PeerNetworkContext = createContext({
   },
 })
 
-export function userPeerNetworkContext() {
+export function usePeerNetworkContext() {
   return useContext(PeerNetworkContext)
 }
 
 export function useNetwork() {
-  return userPeerNetworkContext().network
+  return usePeerNetworkContext().network
 }
 
 export function useUser() {
-  return userPeerNetworkContext().user
+  return usePeerNetworkContext().user
 }
 
 export function useNetworkStatus() {
-  return userPeerNetworkContext().status
+  return usePeerNetworkContext().status
 }
 
 export function useMessages() {
-  return userPeerNetworkContext().messages
+  return usePeerNetworkContext().messages
 }
 
 export function useBroadcaster() {
-  return userPeerNetworkContext().broadcast
+  return usePeerNetworkContext().broadcast
 }
 
 export function useRoom() {
