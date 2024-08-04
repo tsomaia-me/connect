@@ -1,29 +1,15 @@
-export class LoginModel {
-  username: string
-}
-
-export class User {
+export interface User {
   id: string
   key: string
   username: string
 }
 
-export class CreateRoomModel {
-  name: string
-  hostKey: string
-}
-
-export class JoinRoomModel {
-  name: string
-  hostKey?: string
-}
-
-export class Participant {
+export interface Participant {
   user: User
   nonce: string
 }
 
-export class Room {
+export interface Room {
   id: string
   key: string
   name: string
@@ -31,33 +17,33 @@ export class Room {
   participants: Participant[]
 }
 
-export class JoinRoomSignal {
+export interface JoinRoomSignal {
   roomKey: string
   userKey: string
 }
 
-export class JoinedRoomSignal {
+export interface JoinedRoomSignal {
   user: User
   room: Room
 }
 
-export class RoomUpdatedSignal {
+export interface RoomUpdatedSignal {
   room: Room
 }
 
-export class OfferSignal {
+export interface OfferSignal {
   senderId: string
   receiverId: string
   data: RTCSessionDescriptionInit
 }
 
-export class AnswerSignal {
+export interface AnswerSignal {
   senderId: string
   receiverId: string
   data: RTCSessionDescriptionInit
 }
 
-export class IceCandidateSignal {
+export interface IceCandidateSignal {
   senderId: string
   receiverId: string
   data: RTCIceCandidate
