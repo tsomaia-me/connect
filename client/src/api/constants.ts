@@ -1,1 +1,1 @@
-export const BASE_URL = 'http://signaling.tsomaia.me'
+export const BASE_URL = 'https://signaling.tsomaia.me'

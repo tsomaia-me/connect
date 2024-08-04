@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import { SocketProvider } from '@/components/SocketProvider'
 import { DataSubscriptionContainer } from '@/components/DataSubscriptionContainer'
 
-const SIGNALING_SERVER_URL = 'http://signaling.tsomaia.me'
+const SIGNALING_SERVER_URL = 'https://signaling.tsomaia.me'
 
 export async function getUser(key: string) {
   const response = await fetch(`${SIGNALING_SERVER_URL}/user/${key}`, {
