@@ -1,6 +1,7 @@
 import { DependencyList, useCallback, useEffect, useState } from 'react'
 import { FieldParams, SocketResponse } from '@/components/shared/types'
 import { useSocket } from '@/components/SocketProvider'
+import { User } from '@/app.models'
 
 export function useMutation<T extends Function>(callback: T, deps: DependencyList) {
   const [isExecuting, setIsExecuting] = useState(false)
@@ -49,7 +50,7 @@ export function useEmitter(): <T>(message: string, payload: unknown) => Promise<
   }, [socket])
 }
 
-export function useRealtimeData<T>(message: string, key: unknown) {
+export function useRealtimeData<T>(message: string, key: unknown): [T | null, unknown | null] {
   const socket = useSocket()
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<unknown | null>(null)
@@ -74,5 +75,5 @@ export function useRealtimeData<T>(message: string, key: unknown) {
     }
   }, [message, key, socket])
 
-  return [data, error]
+  return [data, error] as [T | null, unknown | null]
 }

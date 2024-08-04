@@ -56,9 +56,14 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
     canvas.width = width
     canvas.height = height
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d')!
+
+    if (!ctx) {
+      return
+    }
+
     let isMouseActive = false
-    let points = []
+    let points: TimePoint[] = []
     const peerPoints = new Map<string, TimePoint[]>()
 
     function schedule(task: () => void) {

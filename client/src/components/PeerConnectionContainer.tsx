@@ -1,4 +1,4 @@
-import { Room, User } from '@/app.models'
+import { AnswerSignal, Room, User } from '@/app.models'
 import { Dashboard } from '@/components/Dashboard'
 import { useEffect, useRef, useState } from 'react'
 import { useEmitter } from '@/components/shared/hooks'
@@ -94,7 +94,7 @@ export function PeerConnectionContainer(props: RoomViewProps) {
       async function offer() {
         const offer = await peerConnection.createOffer()
         await peerConnection.setLocalDescription(offer)
-        const answer = await emit('offer', {
+        const answer = await emit<AnswerSignal>('offer', {
           senderId: user.id,
           receiverId: participant.user.id,
           payload: offer,

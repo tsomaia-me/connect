@@ -122,10 +122,12 @@ export function DashboardNotes(props: DashboardNotesProps) {
   const handleAttachmentLoaded = useCallback((attachmentId: string, content: ArrayBuffer) => {
     const attachmentMetadata = attachmentsRef.current.get(attachmentId)
 
-    attachmentsRef.current.set(attachmentId, {
-      ...attachmentMetadata,
-      content,
-    })
+    if (attachmentMetadata) {
+      attachmentsRef.current.set(attachmentId, {
+        ...attachmentMetadata,
+        content,
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -302,7 +304,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
     const user = userRef.current!
     setPosition(controlPosition)
 
-    function setPosition([x, y]) {
+    function setPosition([x, y]: Point) {
       const left = x - (newNoteEl.offsetWidth / 2)
       const top = y - (newNoteEl.offsetHeight / 2)
       newNoteEl.style.left = `${left}px`

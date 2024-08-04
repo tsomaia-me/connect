@@ -105,25 +105,22 @@ export function StickyNote(props: StickyNoteProps) {
 
     const noteEl = noteElRef.current!
 
-    function getPosition([x, y]) {
+    function getPosition([x, y]: Point): Point {
       const left = x - (noteEl.offsetWidth / 2)
       const top = y - (moveHandleRef.current!.offsetTop + (moveHandleRef.current!.offsetHeight / 2))
 
-      return {
-        left,
-        top,
-      }
+      return [left, top] as Point
     }
 
-    function setPosition([x, y]) {
-      const { left, top } = getPosition([x, y])
+    function setPosition([x, y]: Point) {
+      const [left, top] = getPosition([x, y] as Point)
       noteEl.style.left = `${left}px`
       noteEl.style.top = `${top}px`
     }
 
     function onMouseMove(event: MouseEvent) {
-      const point = [event.clientX, event.clientY]
-      const { left, top } = getPosition(point)
+      const point = [event.clientX, event.clientY] as Point
+      const [left, top] = getPosition(point)
       setPosition(point)
       onNoteChange({
         ...noteRef.current,
@@ -132,8 +129,8 @@ export function StickyNote(props: StickyNoteProps) {
     }
 
     function onMouseUp(event: MouseEvent) {
-      const point = [event.clientX, event.clientY]
-      const { left, top } = getPosition(point)
+      const point = [event.clientX, event.clientY] as Point
+      const [left, top] = getPosition(point)
       setIsMoving(false)
       setPosition(point)
       onNoteChange({
@@ -249,14 +246,15 @@ export function StickyNote(props: StickyNoteProps) {
                   name: file.name,
                   type: file.type,
                   size: file.size,
-                  content: null,
                 },
               ],
             })
 
             const fileReader = new FileReader()
             fileReader.onload = event => {
-              onAttachmentLoaded(id, event.target.result as ArrayBuffer)
+              if (event.target) {
+                onAttachmentLoaded(id, event.target!.result as ArrayBuffer)
+              }
             }
             fileReader.readAsArrayBuffer(file)
           }

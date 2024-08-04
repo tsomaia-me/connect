@@ -63,18 +63,21 @@ export function base64ToArrayBuffer(base64: string) {
   return bytes.buffer
 }
 
-export function* getChunks(data: string, chunkSize: number) {
+export function getChunks(data: string, chunkSize: number) {
   let offset = 0
   let i = 0
+  const chunks = []
 
   while (offset < data.length) {
     const chunk = data.slice(offset, offset + chunkSize)
     offset += chunkSize
-    yield {
+    chunks.push({
       i,
       chunk,
       finished: offset >= data.length,
-    }
+    })
     ++i
   }
+
+  return chunks
 }

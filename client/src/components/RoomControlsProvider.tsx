@@ -98,26 +98,30 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
       peerId: userId,
     } as PeerEvent)
   }, [userId])
-  const send = useCallback((id: string, event: PeerEvent) => {
+  const send = useCallback((id: string, eventDraft: PeerEventDraft) => {
     const dataChannel = peers.get(id)?.dataChannel
+    const peerEvent: PeerEvent = {
+      ...eventDraft,
+      peerId: userId,
+    }
 
     if (dataChannel?.readyState === 'open') {
       try {
         dataChannel.send(JSON.stringify({
-          ...event,
+          ...eventDraft,
           peerId: userId,
         }))
       } catch (error) {
         console.log(error)
-        addEventToBuffer(id, event)
+        addEventToBuffer(id, peerEvent)
       }
     } else if (dataChannel) {
-      addEventToBuffer(id, event)
+      addEventToBuffer(id, peerEvent)
     }
   }, [userId, peers, addEventToBuffer])
-  const broadcast = useCallback((event: PeerEvent) => {
-    for (const peerId of peers.keys()) {
-      send(peerId, event)
+  const broadcast = useCallback((eventDraft: PeerEventDraft) => {
+    for (const peerId of Array.from(peers.keys())) {
+      send(peerId, eventDraft)
     }
   }, [peers, send])
   const addPeerEventListener = useCallback((eventName: string, listener: PeerEventListener) => {
@@ -161,7 +165,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
     const currentPeerIds = Array.from(peers.keys())
     const disposers: Array<() => void> = []
 
-    for (const savedParticipant of existingPeersRef.current) {
+    for (const savedParticipant of Array.from(existingPeersRef.current)) {
       console.log(savedParticipant.user.id, currentPeerIds)
       if (!currentPeerIds.includes(savedParticipant.user.id)) {
         console.log('peer left:', savedParticipant.user.username)
@@ -173,7 +177,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
       }
     }
 
-    for (const peer of peers.values()) {
+    for (const peer of Array.from(peers.values())) {
       if (!existingPeersRef.current.has(peer.participant)) {
         existingPeersRef.current.add(peer.participant)
         console.log('peer joined:', peer.participant.user.username)
@@ -214,7 +218,7 @@ export function RoomControlsProvider(props: RoomControlsProviderProps) {
     }
 
     return () => {
-      for (const peer of peers.values()) {
+      for (const peer of Array.from(peers.values())) {
         peer.dataChannel.onmessage = null
       }
 

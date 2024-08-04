@@ -25,7 +25,7 @@ export function Dashboard() {
   const removePeerEventListener = useRemovePeerEventListener()
   const [selectedControl, setSelectedControl] = useState<DashboardControl | null>('pen')
   const [controlPosition, setControlPosition] = useState<[number, number]>([0, 0])
-  const handleSelectControl = useCallback((control: DashboardControl, event: MouseEvent<HTMLButtonElement>) => {
+  const handleSelectControl = useCallback((control: DashboardControl | null, event: MouseEvent<HTMLButtonElement>) => {
     setSelectedControl(control)
     setControlPosition([event.nativeEvent.clientX, event.nativeEvent.clientY])
   }, [])

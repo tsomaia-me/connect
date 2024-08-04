@@ -34,17 +34,17 @@ export interface RoomUpdatedSignal {
 export interface OfferSignal {
   senderId: string
   receiverId: string
-  data: RTCSessionDescriptionInit
+  payload: RTCSessionDescriptionInit
 }
 
 export interface AnswerSignal {
   senderId: string
   receiverId: string
-  data: RTCSessionDescriptionInit
+  payload: RTCSessionDescriptionInit
 }
 
 export interface IceCandidateSignal {
   senderId: string
   receiverId: string
-  data: RTCIceCandidate
+  payload: RTCIceCandidate
 }

@@ -1,24 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import { useFetchBody } from '@/components/FetchProvider'
 import { Room, User } from '@/app.models'
 import { HttpError } from '@/app.types'
-import { useSignaler } from '@/components/Signaler'
-
-export function useCache<C extends (...args: unknown[]) => unknown>(getFresh: C) {
-  const cacheRef = useRef<ReturnType<C> | null>(null)
-
-  useEffect(() => {
-    cacheRef.current = null
-  }, [getFresh])
-
-  return useCallback((...args: unknown) => {
-    if (cacheRef.current === null) {
-      cacheRef.current = getFresh(...args)
-    }
-
-    return cacheRef.current
-  }, [getFresh]) as C
-}
 
 export function useLogin() {
   const fetch = useFetchBody<User | HttpError>()
