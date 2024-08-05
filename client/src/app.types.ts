@@ -19,4 +19,5 @@ export interface Peer {
   participant: Participant
   connection: RTCPeerConnection
   dataChannel: RTCDataChannel
+  iceCandidatesBuffer: RTCIceCandidate[];
 }

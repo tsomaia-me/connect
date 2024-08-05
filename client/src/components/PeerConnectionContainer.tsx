@@ -85,6 +85,7 @@ export function PeerConnectionContainer(props: RoomViewProps) {
         participant: room.participants.find(p => p.user.id === participant.user.id)!,
         connection: peerConnection,
         dataChannel: dataChannel,
+        iceCandidatesBuffer: [],
       }
 
       peerConnection.onicecandidate = (event) => {
@@ -135,7 +136,8 @@ export function PeerConnectionContainer(props: RoomViewProps) {
           console.log('adding icecandidate', candidate.payload)
           await peerConnection.addIceCandidate(candidate.payload)
         } else {
-          console.log('ignoring icecandidate because remote description is not set yet', candidate.payload)
+          console.log('buffering icecandidate because remote description is not set yet', candidate.payload)
+          peer.iceCandidatesBuffer.push(candidate.payload)
         }
       })
 
@@ -147,6 +149,14 @@ export function PeerConnectionContainer(props: RoomViewProps) {
           console.log('received answer', answer.payload)
           if (peerConnection.signalingState !== 'stable') {
             await peerConnection.setRemoteDescription(answer.payload)
+
+            if (peer.iceCandidatesBuffer.length > 0) {
+              console.log(`${peer.iceCandidatesBuffer.length} Buffered ICE candidates available, adding`)
+              peer.iceCandidatesBuffer.forEach(candidate => {
+                peer.connection.addIceCandidate(candidate)
+              })
+              peer.iceCandidatesBuffer = [];
+            }
             console.log('remote description set')
           } else {
             console.log('ignoring setting remote description because peer connection is in stable state')
@@ -174,6 +184,14 @@ export function PeerConnectionContainer(props: RoomViewProps) {
             payload: answer,
           })
           console.log('answered', answer)
+
+          if (peer.iceCandidatesBuffer.length > 0) {
+            console.log(`${peer.iceCandidatesBuffer.length} Buffered ICE candidates available, adding`)
+            peer.iceCandidatesBuffer.forEach(candidate => {
+              peer.connection.addIceCandidate(candidate)
+            })
+            peer.iceCandidatesBuffer = [];
+          }
         })
       }
     })
