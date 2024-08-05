@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Room, User } from '@/app.models'
 import { useSignalerSender, useRealtimeData } from '@/components/shared/hooks'
-import { PeerConnectionContainer } from '@/components/PeerConnectionContainer'
 import { WebRTCProvider } from '@/components/WebRTCProvider'
+import { Dashboard } from '@/components/Dashboard'
 
 export interface DataSubscriptionContainerProps {
   userKey: string
@@ -49,7 +49,9 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
           user={user}
           room={room}
           iceServers={ICE_SERVERS}
-        />
+        >
+          <Dashboard/>
+        </WebRTCProvider>
       )}
     </>
   )

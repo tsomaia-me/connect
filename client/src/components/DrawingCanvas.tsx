@@ -5,10 +5,9 @@ import {
   useBroadcaster,
   useRemovePeerEventListener,
   useRoom,
-  useSender,
-  useUser
-} from '@/components/RoomControlsProvider'
-import { Room, User } from '@/app.models'
+  useSender
+} from '@/components/WebRTCProvider'
+import { Room } from '@/app.models'
 import { TimePoint } from '@/components/shared/types'
 import { getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
 
@@ -18,7 +17,6 @@ export interface DrawingCanvasProps {
 
 export function DrawingCanvas(props: DrawingCanvasProps) {
   const { isActive } = props
-  const user = useUser()
   const room = useRoom()
   const send = useSender()
   const broadcast = useBroadcaster()
@@ -33,13 +31,11 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
   const isActiveRef = useRef<boolean>(isActive)
   const drawingRef = useRef<TimePoint[][]>([])
   const roomRef = useRef<Room>(room)
-  const userRef = useRef<User>(user)
 
   isActiveRef.current = isActive
   sendRef.current = send
   broadcastRef.current = broadcast
   roomRef.current = room
-  userRef.current = user
   addPeerEventListenerRef.current = addPeerEventListener
   removePeerEventListenerRef.current = removePeerEventListener
 

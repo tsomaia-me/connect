@@ -1,4 +1,4 @@
-import { MouseEvent, useCallback, useEffect, useState } from 'react'
+import { MouseEvent, useCallback, useState } from 'react'
 import {
   useAddPeerEventListener,
   useBroadcaster,
@@ -7,15 +7,15 @@ import {
   useRoom,
   useRoomKey,
   useSender,
-  useUser
-} from '@/components/RoomControlsProvider'
+  useSelf,
+} from '@/components/WebRTCProvider'
 import { DrawingCanvas } from '@/components/DrawingCanvas'
 import { DashboardFooter } from '@/components/DashboardFooter'
 import { DashboardControl, DashboardControls } from '@/components/DashboardControls'
 import { DashboardNotes } from '@/components/DashboardNotes'
 
 export function Dashboard() {
-  const user = useUser()
+  const user = useSelf()
   const room = useRoom()
   const roomKey = useRoomKey()
   const peers = usePeers()

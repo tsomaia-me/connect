@@ -1,5 +1,5 @@
 import { Input } from '@/components/shared/Input'
-import { usePeers, useRoomKey } from '@/components/RoomControlsProvider'
+import { usePeers, useRoomKey } from '@/components/WebRTCProvider'
 
 export function DashboardFooter() {
   const roomKey = useRoomKey()

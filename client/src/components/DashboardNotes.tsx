@@ -14,10 +14,9 @@ import {
   useAddPeerEventListener,
   useBroadcaster,
   useRemovePeerEventListener,
-  useRoom,
+  useRoom, useSelf,
   useSender,
-  useUser
-} from '@/components/RoomControlsProvider'
+} from '@/components/WebRTCProvider'
 import { Room, User } from '@/app.models'
 
 export interface DashboardNotesProps {
@@ -28,13 +27,13 @@ export interface DashboardNotesProps {
 
 export function DashboardNotes(props: DashboardNotesProps) {
   const { isActive, controlPosition, onNoteCreated } = props
-  const user = useUser()
+  const self = useSelf()
   const room = useRoom()
   const send = useSender()
   const broadcast = useBroadcaster()
   const addPeerEventListener = useAddPeerEventListener()
   const removePeerEventListener = useRemovePeerEventListener()
-  const userRef = useRef<User>(user)
+  const userRef = useRef<User>(self.user)
   const roomRef = useRef<Room>(room)
   const sendRef = useRef(send)
   const broadcastRef = useRef(broadcast)
@@ -57,7 +56,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
     height: boardRef.current?.offsetHeight ?? 0,
   }
 
-  userRef.current = user
+  userRef.current = self.user
   sendRef.current = send
   broadcastRef.current = broadcast
   notesRef.current = notes
@@ -370,7 +369,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
       {notes.map(note => (
         <StickyNote
           key={note.id}
-          user={user}
+          user={self.user}
           box={box}
           note={note}
           onNoteChange={handleNoteChange}
