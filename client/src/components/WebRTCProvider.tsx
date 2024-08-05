@@ -276,37 +276,34 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
           payload: {},
         })
 
-        if (peerDataChannel.readyState !== 'open') {
-          const onPeerDataChannelOpen = () => {
-            console.log('Data channel opened, broadcasting')
-            broadcast({
-              event: 'open',
-              payload: {},
-            })
-          }
-
-          function onPeerReportedOpen() {
-            console.log('Peer is open, sending buffered messages')
-
-            bufferRef.current.get(peer.connectionId)?.forEach(event => {
-              try {
-                peerDataChannel.send(JSON.stringify(event))
-              } catch (error) {
-                console.log(error)
-                addEventToBuffer(peer.connectionId, event)
-              }
-            })
-          }
-
-          addPeerEventListener('open', onPeerReportedOpen)
-
-          peerDataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
-
-          disposers.push(() => {
-            peerDataChannel.removeEventListener('open', onPeerDataChannelOpen)
-            removePeerEventListener('open', onPeerReportedOpen)
+        const onPeerDataChannelOpen = () => {
+          console.log('Data channel opened, broadcasting')
+          broadcast({
+            event: 'open',
+            payload: {},
           })
         }
+
+        const onPeerReportedOpen = () => {
+          console.log('Peer is open, sending buffered messages')
+
+          bufferRef.current.get(peer.connectionId)?.forEach(event => {
+            try {
+              peerDataChannel.send(JSON.stringify(event))
+            } catch (error) {
+              console.log(error)
+              addEventToBuffer(peer.connectionId, event)
+            }
+          })
+        }
+
+        addPeerEventListener('open', onPeerReportedOpen)
+        peerDataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
+
+        disposers.push(() => {
+          removePeerEventListener('open', onPeerReportedOpen)
+          peerDataChannel.removeEventListener('open', onPeerDataChannelOpen)
+        })
       }
 
       peerDataChannel.onmessage = (event) => {
