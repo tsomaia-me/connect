@@ -152,7 +152,7 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
           isInitiator={participant.i % 2 === 0}
         />
       ))}
-      {children}
+      {self && children}
     </WebRTCContext.Provider>
   )
 }
