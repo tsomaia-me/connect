@@ -23,9 +23,9 @@ export class RoomBuilder {
     return this
   }
 
-  withoutParticipant(participant: User) {
+  withoutParticipant(participant: Participant) {
     this.room = this.getClone()
-    this.room.participants = this.room.participants.filter(p => p.user.key !== participant.key)
+    this.room.participants = this.room.participants.filter(p => p.user.id !== participant.user.id)
 
     return this
   }

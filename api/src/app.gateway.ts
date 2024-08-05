@@ -133,7 +133,10 @@ export class AppGateway implements OnGatewayDisconnect {
         }
 
         await this.roomService.updateWhere(
-          builder => builder.withoutParticipant(user),
+          builder => builder.withoutParticipant({
+            connectionId: '',
+            user,
+          }),
           room => room.participants.map(participant => participant.user.id).includes(user.id)
         )
 

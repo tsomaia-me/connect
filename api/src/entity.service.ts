@@ -67,7 +67,7 @@ export abstract class EntityService<Entity extends ModelBase, Builder extends En
 
     const updatedEntity = mapper(this.getBuilder(entity)).toModel()
 
-    this.entityList = this.entityList.map(entity => entity.key === key ? updatedEntity : entity)
+    this.entityList = this.entityList.map(e => e.id === entity.id ? updatedEntity : entity)
     this.entitiesByIds.set(updatedEntity.id, updatedEntity)
     this.entitiesByKeys.set(key, updatedEntity)
 
