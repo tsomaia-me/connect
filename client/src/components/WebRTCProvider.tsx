@@ -263,14 +263,15 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
     for (const peer of peers) {
       if (!existingPeersRef.current.has(peer.connectionId)) {
         existingPeersRef.current.add(peer.connectionId)
-        triggerEvent({
-          event: 'joined',
-          peerId: peer.connectionId,
-          payload: {},
-        })
 
         if (peer.dataChannel?.readyState !== 'open') {
           const onPeerDataChannelOpen = () => {
+            triggerEvent({
+              event: 'joined',
+              peerId: peer.connectionId,
+              payload: {},
+            })
+
             bufferRef.current.get(peer.connectionId)?.forEach(event => {
               if (peer.dataChannel) {
                 try {
