@@ -262,7 +262,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
 
     for (const peer of peers) {
       if (!peer.dataChannel) {
-        return
+        continue
       }
 
       const peerDataChannel = peer.dataChannel
