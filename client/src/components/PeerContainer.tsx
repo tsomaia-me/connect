@@ -31,6 +31,8 @@ export function PeerContainer(props: PeerContainerProps) {
   iceServersRef.current = iceServers
 
   useEffect(() => {
+    logMessage('useEffect() being called')
+
     const connection = new RTCPeerConnection({ iceServers: iceServersRef.current })
     const dataChannel = connection.createDataChannel('default', {
       negotiated: true,
@@ -74,17 +76,23 @@ export function PeerContainer(props: PeerContainerProps) {
       logMessage('Data channel closed')
     }
 
-    socket.on('offer', event => {
-      void sendAnswer(event.payload)
-    })
+    socket.on('offer', onOfferSignal)
 
-    socket.on('answer', event => {
-      void receiveAnswer(event.payload)
-    })
+    socket.on('answer', onAnswer)
     
-    socket.on('icecandidate', event => {
+    socket.on('icecandidate', onIceCandidateSignal)
+
+    function onOfferSignal(event) {
+      void sendAnswer(event.payload)
+    }
+
+    function onAnswer(event) {
+      void receiveAnswer(event.payload)
+    }
+
+    function onIceCandidateSignal(event) {
       void addIceCandidate(event.payload)
-    })
+    }
 
     async function addBufferedIceCandidates() {
       if (iceCandidatesBuffer.length > 0) {
@@ -180,6 +188,16 @@ export function PeerContainer(props: PeerContainerProps) {
     }
 
     return () => {
+      socket.off('offer', onOfferSignal)
+      socket.off('answer', onAnswer)
+      socket.off('icecandidate', onIceCandidateSignal)
+
+      connection.onicecandidate = null
+      connection.oniceconnectionstatechange = null
+      connection.onnegotiationneeded = null
+      dataChannel.onopen = null
+      dataChannel.onclose = null
+      dataChannel.close()
       connection.close()
     }
   }, [self, participant.connectionId, addPeer, removePeer])

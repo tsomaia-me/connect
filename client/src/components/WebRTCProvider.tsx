@@ -58,17 +58,18 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
     addPeer,
     removePeer,
   }), [userKey, roomKey, user, room, iceServers, peers, addPeer, removePeer])
-  const self = useMemo(() => participants.find(p => p.user.id === userId), [participants, userId])
-  const others = useMemo(() => participants.filter(p => p.user.id !== userId), [participants, userId])
+  const participantsWithIndices = useMemo(() => participants.map((p, i) => ({ ...p, i })), [participants])
+  const self = useMemo(() => participantsWithIndices.find(p => p.user.id === userId), [participantsWithIndices, userId])
+  const others = useMemo(() => participantsWithIndices.filter(p => p.user.id !== userId), [participantsWithIndices, userId])
 
   return (
     <WebRTCContext.Provider value={contextValue}>
-      {self && others.map((participant, index) => (
+      {self && others.map(participant => (
         <PeerContainer
           key={participant.connectionId}
           self={self}
           participant={participant}
-          isInitiator={index % 2 === 0}
+          isInitiator={participant.i % 2 === 0}
         />
       ))}
       {children}
