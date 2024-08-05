@@ -270,14 +270,14 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
       if (!existingPeersRef.current.has(peer.connectionId)) {
         existingPeersRef.current.add(peer.connectionId)
 
+        triggerEvent({
+          event: 'joined',
+          peerId: peer.connectionId,
+          payload: {},
+        })
+
         if (peerDataChannel.readyState !== 'open') {
           const onPeerDataChannelOpen = () => {
-            triggerEvent({
-              event: 'joined',
-              peerId: peer.connectionId,
-              payload: {},
-            })
-
             console.log('Data channel opened, broadcasting')
             broadcast({
               event: 'open',
