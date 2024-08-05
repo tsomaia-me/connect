@@ -70,6 +70,8 @@ export class AppGateway implements OnGatewayDisconnect {
       return toSocketErrorResponse(404, `Invalid room key: ${data.roomKey}`)
     }
 
+    console.log(user.username, 'joining a room', room.id, room.name)
+
     const connectionId = `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`
     this.connections.set(connectionId, {
       user,
