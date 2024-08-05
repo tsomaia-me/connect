@@ -1,7 +1,7 @@
-import { Participant } from '@/app.models'
+import { OfferSignal, Participant, SignalEvent } from '@/app.models'
 import { useEffect, useRef } from 'react'
 import { useSignalerSender } from '@/components/shared/hooks'
-import { Peer, useWebRTCContext } from '@/components/WebRTCProvider'
+import { Peer, PeerEvent, useWebRTCContext } from '@/components/WebRTCProvider'
 import { useSignaler } from '@/components/SocketProvider'
 
 export interface PeerContainerProps {
@@ -45,7 +45,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
     addPeer({ ...peerRef.current })
 
-    connection.onicecandidate = (event) => {
+    connection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
       if (event.candidate) {
         logMessage('Sending ICE candidate', event.candidate)
         sendSignal('icecandidate', {
@@ -82,15 +82,15 @@ export function PeerContainer(props: PeerContainerProps) {
     
     socket.on('icecandidate', onIceCandidateSignal)
 
-    function onOfferSignal(event) {
+    function onOfferSignal(event: SignalEvent<RTCSessionDescriptionInit>) {
       void sendAnswer(event.payload)
     }
 
-    function onAnswer(event) {
+    function onAnswer(event: SignalEvent<RTCSessionDescriptionInit>) {
       void receiveAnswer(event.payload)
     }
 
-    function onIceCandidateSignal(event) {
+    function onIceCandidateSignal(event: SignalEvent<RTCIceCandidate>) {
       void addIceCandidate(event.payload)
     }
 
@@ -120,7 +120,7 @@ export function PeerContainer(props: PeerContainerProps) {
       }
     }
 
-    async function sendAnswer(offer) {
+    async function sendAnswer(offer: RTCSessionDescriptionInit) {
       try {
         await connection.setRemoteDescription(offer)
         const answer = await connection.createAnswer()
@@ -137,7 +137,7 @@ export function PeerContainer(props: PeerContainerProps) {
       }
     }
 
-    async function receiveAnswer(answer) {
+    async function receiveAnswer(answer: RTCSessionDescriptionInit) {
       try {
         await connection.setRemoteDescription(answer)
         await addBufferedIceCandidates()
@@ -147,7 +147,7 @@ export function PeerContainer(props: PeerContainerProps) {
       }
     }
 
-    async function addIceCandidate(candidate) {
+    async function addIceCandidate(candidate: RTCIceCandidate) {
       try {
         if (connection.remoteDescription) {
           logMessage('Adding ICE candidate', candidate)

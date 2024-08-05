@@ -31,6 +31,21 @@ export interface PeerEvent {
 
 export type PeerEventListener = (event: PeerEvent) => void
 
+export interface WebRTCContextValue {
+  userKey: string
+  roomKey: string
+  self: Participant
+  room: Room
+  iceServers: RTCIceServer[]
+  peers: Peer[]
+  addPeer: (peer: Peer) => void
+  removePeer: (id: string) => void
+  send: (peerId: string, event: PeerEventDraft) => void
+  broadcast: (event: PeerEventDraft) => void
+  addPeerEventListener: (eventName: string, listener: PeerEventListener) => void
+  removePeerEventListener: (eventName: string, listener: PeerEventListener) => void
+}
+
 const WebRTCContext = createContext({
   userKey: '',
   roomKey: '',
@@ -41,12 +56,12 @@ const WebRTCContext = createContext({
   room: { id: '', key: '', name: '', hostKey: '', participants: [] } as Room,
   iceServers: [] as RTCIceServer[],
   peers: [] as Peer[],
-  addPeer: (peer: Peer) => void 0,
-  removePeer: (id: string) => void 0,
-  send: (peerId: string, event: PeerEventDraft) => void 0,
-  broadcast: (event: PeerEventDraft) => void 0,
-  addPeerEventListener: (eventName: string, listener: PeerEventListener) => void 0,
-  removePeerEventListener: (eventName: string, listener: PeerEventListener) => void 0,
+  addPeer: (peer: Peer) => {},
+  removePeer: (id: string) => {},
+  send: (peerId: string, event: PeerEventDraft) => {},
+  broadcast: (event: PeerEventDraft) => {},
+  addPeerEventListener: (eventName: string, listener: PeerEventListener) => {},
+  removePeerEventListener: (eventName: string, listener: PeerEventListener) => {},
 })
 
 export function useWebRTCContext() {
@@ -95,13 +110,15 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
   const participants = room.participants
   const [peers, setPeers] = useState<Peer[]>([])
 
-  const addPeer = useCallback((peer: Peer) => setPeers(peers => {
-    if (peers.map(p => p.connectionId).includes(peer.connectionId)) {
-      return peers.map(p => p.connectionId === peer.connectionId ? peer : p)
-    }
+  const addPeer = useCallback((peer: Peer) => {
+    setPeers(peers => {
+      if (peers.map(p => p.connectionId).includes(peer.connectionId)) {
+        return peers.map(p => p.connectionId === peer.connectionId ? peer : p)
+      }
 
-    return [...peers, peer]
-  }), [])
+      return [...peers, peer]
+    })
+  }, [])
 
   const removePeer = useCallback((connectionId: string) => {
     setPeers(peers => peers.filter(peer => peer.connectionId !== connectionId))
@@ -114,7 +131,7 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
     peers,
     self?.connectionId ?? '',
   )
-  const contextValue = useMemo(() => ({
+  const contextValue = useMemo<WebRTCContextValue | null>(() => !self ? null : ({
     userKey,
     roomKey,
     self,
@@ -142,17 +159,21 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
     removePeerEventListener,
   ])
 
+  if (!contextValue) {
+    return
+  }
+
   return (
     <WebRTCContext.Provider value={contextValue}>
-      {self && others.map(participant => (
+      {others.map(participant => (
         <PeerContainer
           key={participant.connectionId}
-          self={self}
+          self={contextValue.self}
           participant={participant}
           isInitiator={participant.i % 2 === 0}
         />
       ))}
-      {self && children}
+      {children}
     </WebRTCContext.Provider>
   )
 }

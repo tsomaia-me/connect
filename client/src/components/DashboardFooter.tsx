@@ -14,7 +14,7 @@ export function DashboardFooter() {
         }}/>
       </div>
       <p className="text-center">
-        {peers.size === 0 ? 'You are the only one in the room' : `There are ${peers.size + 1} people in the room`}
+        {peers.length === 0 ? 'You are the only one in the room' : `There are ${peers.length + 1} people in the room`}
       </p>
     </div>
   )

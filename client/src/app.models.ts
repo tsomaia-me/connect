@@ -31,6 +31,12 @@ export interface RoomUpdatedSignal {
   room: Room
 }
 
+export interface SignalEvent<T> {
+  senderId: string
+  receiverId: string
+  payload: T
+}
+
 export interface OfferSignal {
   senderId: string
   receiverId: string
