@@ -113,7 +113,7 @@ export class AppGateway implements OnGatewayDisconnect {
     const connection = this.connections.get(receiverId)
 
     if (!connection) {
-      console.log(`failed to send ${event}, no connection found for`, receiverId)
+      console.log(`failed to send ${event}, no connection found for`, receiverId, Array.from(this.connections.keys()))
       return
     }
 
