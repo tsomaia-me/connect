@@ -261,10 +261,16 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
     }
 
     for (const peer of peers) {
+      if (!peer.dataChannel) {
+        return
+      }
+
+      const peerDataChannel = peer.dataChannel
+
       if (!existingPeersRef.current.has(peer.connectionId)) {
         existingPeersRef.current.add(peer.connectionId)
 
-        if (peer.dataChannel?.readyState !== 'open') {
+        if (peerDataChannel.readyState !== 'open') {
           const onPeerDataChannelOpen = () => {
             triggerEvent({
               event: 'joined',
@@ -283,14 +289,10 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
             console.log('Peer is open, sending buffered messages')
 
             bufferRef.current.get(peer.connectionId)?.forEach(event => {
-              if (peer.dataChannel) {
-                try {
-                  peer.dataChannel.send(JSON.stringify(event))
-                } catch (error) {
-                  console.log(error)
-                  addEventToBuffer(peer.connectionId, event)
-                }
-              } else {
+              try {
+                peerDataChannel.send(JSON.stringify(event))
+              } catch (error) {
+                console.log(error)
                 addEventToBuffer(peer.connectionId, event)
               }
             })
@@ -298,29 +300,22 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
 
           addPeerEventListener('open', onPeerReportedOpen)
 
-          if (peer.dataChannel) {
-            peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
-          }
+          peerDataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
 
           disposers.push(() => {
-            if (peer.dataChannel) {
-              peer.dataChannel.removeEventListener('open', onPeerDataChannelOpen)
-            }
-
+            peerDataChannel.removeEventListener('open', onPeerDataChannelOpen)
             removePeerEventListener('open', onPeerReportedOpen)
           })
         }
       }
 
-      if (peer.dataChannel) {
-        peer.dataChannel.onmessage = (event) => {
-          try {
-            console.log('received message from peer', event)
-            const peerEvent = JSON.parse(event.data)
-            triggerEvent(peerEvent)
-          } catch (error) {
-            console.log(`Failed to parse message from peer ${peer.participant.user.username}: `, error)
-          }
+      peerDataChannel.onmessage = (event) => {
+        try {
+          console.log('received message from peer', event)
+          const peerEvent = JSON.parse(event.data)
+          triggerEvent(peerEvent)
+        } catch (error) {
+          console.log(`Failed to parse message from peer ${peer.participant.user.username}: `, error)
         }
       }
     }
