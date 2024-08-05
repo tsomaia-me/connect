@@ -272,6 +272,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
               payload: {},
             })
 
+            console.log('Data channel opened, broadcasting')
             broadcast({
               event: 'open',
               payload: {},
