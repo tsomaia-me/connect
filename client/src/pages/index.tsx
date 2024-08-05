@@ -90,7 +90,7 @@ export default function HomePage() {
 
         <div className="flex flex-row items-center gap-4 px-4">
           <div className="flex-1 border-t border-gray-500"></div>
-          <div className="text-gray-500">Enter a room234</div>
+          <div className="text-gray-500">Enter a room2345</div>
           <div className="flex-1 border-t border-gray-500"></div>
         </div>
 
