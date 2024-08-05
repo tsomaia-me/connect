@@ -15,14 +15,16 @@ export class RoomBuilder {
   }
 
   withParticipant(participant: Participant) {
-    if (!this.room.participants.map(participant => participant.user.id).includes(participant.user.id)) {
-      const builder = this.getClone()
-      builder.room.participants.push(participant)
+    const builder = this.getClone()
 
-      return builder
+    if (!this.room.participants.map(participant => participant.user.id).includes(participant.user.id)) {
+      builder.room.participants.push(participant)
+    } else {
+      builder.room.participants = builder.room.participants
+        .map(p => p.user.id === participant.user.id ? participant : p)
     }
 
-    return this
+    return builder
   }
 
   withoutParticipant(participant: Participant) {
