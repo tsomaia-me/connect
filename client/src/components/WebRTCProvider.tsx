@@ -260,7 +260,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
       }
     }
 
-    for (const peer of Array.from(peers.values())) {
+    for (const peer of peers) {
       if (!existingPeersRef.current.has(peer.connectionId)) {
         existingPeersRef.current.add(peer.connectionId)
         triggerEvent({
@@ -300,6 +300,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
       if (peer.dataChannel) {
         peer.dataChannel.onmessage = (event) => {
           try {
+            console.log('received message from peer', event)
             const peerEvent = JSON.parse(event.data)
             triggerEvent(peerEvent)
           } catch (error) {
@@ -310,7 +311,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
     }
 
     return () => {
-      for (const peer of Array.from(peers.values())) {
+      for (const peer of peers) {
         if (peer.dataChannel) {
           peer.dataChannel.onmessage = null
         }
