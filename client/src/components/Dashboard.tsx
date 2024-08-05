@@ -1,28 +1,10 @@
 import { MouseEvent, useCallback, useState } from 'react'
-import {
-  useAddPeerEventListener,
-  useBroadcaster,
-  usePeers,
-  useRemovePeerEventListener,
-  useRoom,
-  useRoomKey,
-  useSender,
-  useSelf,
-} from '@/components/WebRTCProvider'
 import { DrawingCanvas } from '@/components/DrawingCanvas'
 import { DashboardFooter } from '@/components/DashboardFooter'
 import { DashboardControl, DashboardControls } from '@/components/DashboardControls'
 import { DashboardNotes } from '@/components/DashboardNotes'
 
 export function Dashboard() {
-  const user = useSelf()
-  const room = useRoom()
-  const roomKey = useRoomKey()
-  const peers = usePeers()
-  const send = useSender()
-  const broadcast = useBroadcaster()
-  const addPeerEventListener = useAddPeerEventListener()
-  const removePeerEventListener = useRemovePeerEventListener()
   const [selectedControl, setSelectedControl] = useState<DashboardControl | null>('pen')
   const [controlPosition, setControlPosition] = useState<[number, number]>([0, 0])
   const handleSelectControl = useCallback((control: DashboardControl | null, event: MouseEvent<HTMLButtonElement>) => {

@@ -6,29 +6,23 @@ import { useSignaler } from '@/components/SocketProvider'
 
 export interface PeerContainerProps {
   self: Participant
-  participant: Participant
-  isInitiator: boolean
+  peer: Peer
 }
 
 export function PeerContainer(props: PeerContainerProps) {
-  const { self, participant, isInitiator } = props
+  const { self, peer } = props
   const socket = useSignaler()
   const sendSignal = useSignalerSender()
-  const { iceServers, addPeer, removePeer } = useWebRTCContext()
-  const peerRef = useRef<Peer>({
-    connectionId: participant.connectionId,
-    participant,
-    isInitiator,
-    connection: {} as unknown as RTCPeerConnection, // placeholder, to avoid excessive type-checks
-    dataChannel: {} as unknown as RTCDataChannel, // same
-  })
+  const { iceServers, updatePeer, removePeer } = useWebRTCContext()
   const iceServersRef = useRef<RTCIceServer[]>(iceServers)
+  const isInitiatorRef = useRef<boolean>(peer.isInitiator)
+  const peerUsernameRef = useRef<string>(peer.participant.user.username)
+  const peerConnectionId = peer.connectionId
 
-  // let's make sure props stay in sync with updates props
-  peerRef.current.connectionId = participant.connectionId
-  peerRef.current.participant = participant
-  peerRef.current.isInitiator = isInitiator
+  // let's make sure ref(s) stay in sync with updated props
   iceServersRef.current = iceServers
+  isInitiatorRef.current = peer.isInitiator
+  peerUsernameRef.current = peer.participant.user.username
 
   useEffect(() => {
     logMessage('useEffect() being called')
@@ -40,17 +34,18 @@ export function PeerContainer(props: PeerContainerProps) {
     })
     let iceCandidatesBuffer: RTCIceCandidate[] = []
 
-    peerRef.current.connection = connection
-    peerRef.current.dataChannel = dataChannel
-
-    addPeer({ ...peerRef.current })
+    updatePeer(peerConnectionId, p => ({
+      ...p,
+      connection,
+      dataChannel,
+    }))
 
     connection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
       if (event.candidate) {
         logMessage('Sending ICE candidate', event.candidate)
         sendSignal('icecandidate', {
           senderId: self.connectionId,
-          receiverId: participant.connectionId,
+          receiverId: peerConnectionId,
           payload: event.candidate,
         })
       }
@@ -112,7 +107,7 @@ export function PeerContainer(props: PeerContainerProps) {
         await connection.setLocalDescription(offer)
         sendSignal('offer', {
           senderId: self.connectionId,
-          receiverId: participant.connectionId,
+          receiverId: peerConnectionId,
           payload: offer,
         })
         logMessage('An offer sent')
@@ -137,7 +132,7 @@ export function PeerContainer(props: PeerContainerProps) {
         await connection.setLocalDescription(answer)
         sendSignal('answer', {
           senderId: self.connectionId,
-          receiverId: participant.connectionId,
+          receiverId: peerConnectionId,
           payload: answer,
         })
         logMessage('An answer sent')
@@ -172,24 +167,24 @@ export function PeerContainer(props: PeerContainerProps) {
 
     function closeConnection() {
       connection.close()
-      removePeer(participant.connectionId)
+      removePeer(peerConnectionId)
     }
 
     function logMessage(message: string, ...args: unknown[]) {
       console.log(
-        `[PeerContainer][${peerRef.current.participant.user.username}] ${message}`,
+        `[PeerContainer][${peerUsernameRef.current}] ${message}`,
         ...args
       )
     }
 
     function logError(message: string, ...args: unknown[]) {
       console.error(
-        `[PeerContainer][${peerRef.current.participant.user.username}] ${message}`,
+        `[PeerContainer][${peerUsernameRef.current}] ${message}`,
         ...args
       )
     }
 
-    if (peerRef.current.isInitiator) {
+    if (isInitiatorRef.current) {
       logMessage('Initiating offer')
       sendOffer().then(() => {
         connection.onnegotiationneeded = () => {
@@ -214,7 +209,7 @@ export function PeerContainer(props: PeerContainerProps) {
       dataChannel.close()
       connection.close()
     }
-  }, [self, participant.connectionId, addPeer, removePeer])
+  }, [self, peerConnectionId, updatePeer, removePeer])
 
   return null
 }

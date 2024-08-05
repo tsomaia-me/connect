@@ -14,8 +14,8 @@ export interface Peer {
   connectionId: string
   participant: Participant
   isInitiator: boolean
-  connection: RTCPeerConnection
-  dataChannel: RTCDataChannel
+  connection: RTCPeerConnection | null
+  dataChannel: RTCDataChannel | null
 }
 
 export interface PeerEventDraft {
@@ -38,7 +38,7 @@ export interface WebRTCContextValue {
   room: Room
   iceServers: RTCIceServer[]
   peers: Peer[]
-  addPeer: (peer: Peer) => void
+  updatePeer: (connectionId: string, mapPeer: (current: Peer) => Peer) => void
   removePeer: (id: string) => void
   send: (peerId: string, event: PeerEventDraft) => void
   broadcast: (event: PeerEventDraft) => void
@@ -56,7 +56,7 @@ const WebRTCContext = createContext({
   room: { id: '', key: '', name: '', hostKey: '', participants: [] } as Room,
   iceServers: [] as RTCIceServer[],
   peers: [] as Peer[],
-  addPeer: (peer: Peer) => {},
+  updatePeer: (connectionId: string, mapPeer: (current: Peer) => Peer) => {},
   removePeer: (id: string) => {},
   send: (peerId: string, event: PeerEventDraft) => {},
   broadcast: (event: PeerEventDraft) => {},
@@ -110,35 +110,30 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
   const participants = room.participants
   const [peers, setPeers] = useState<Peer[]>([])
 
-  const addPeer = useCallback((peer: Peer) => {
-    setPeers(peers => {
-      if (peers.map(p => p.connectionId).includes(peer.connectionId)) {
-        return peers.map(p => p.connectionId === peer.connectionId ? peer : p)
-      }
-
-      return [...peers, peer]
-    })
+  const updatePeer = useCallback((connectionId: string, mapPeer: (current: Peer) => Peer) => {
+    setPeers(peers => peers.map(p => p.connectionId === connectionId ? mapPeer(p) : p))
   }, [])
 
   const removePeer = useCallback((connectionId: string) => {
     setPeers(peers => peers.filter(peer => peer.connectionId !== connectionId))
   }, [])
 
-  const participantsWithIndices = useMemo(() => participants.map((p, i) => ({ ...p, i })), [participants])
-  const self = useMemo(() => participantsWithIndices.find(p => p.user.id === userId), [participantsWithIndices, userId])
-  const others = useMemo(() => participantsWithIndices.filter(p => p.user.id !== userId), [participantsWithIndices, userId])
+  const self = useMemo(() => peers.find(p => p.participant.user.id === userId), [peers, userId])
+  const selfConnectionId = self?.connectionId
+  const selfParticipant = self?.participant
+  const others = useMemo(() => peers.filter(p => p.connectionId !== selfConnectionId), [peers, selfConnectionId])
   const { send, broadcast, addPeerEventListener, removePeerEventListener } = usePeerMessageHandler(
     peers,
     self?.connectionId ?? '',
   )
-  const contextValue = useMemo<WebRTCContextValue | null>(() => !self ? null : ({
+  const contextValue = useMemo<WebRTCContextValue | null>(() => !selfParticipant ? null : ({
     userKey,
     roomKey,
-    self,
+    self: selfParticipant,
     room,
     iceServers,
     peers,
-    addPeer,
+    updatePeer,
     removePeer,
     send,
     broadcast,
@@ -147,11 +142,11 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
   }), [
     userKey,
     roomKey,
-    self,
+    selfParticipant,
     room,
     iceServers,
     peers,
-    addPeer,
+    updatePeer,
     removePeer,
     send,
     broadcast,
@@ -159,18 +154,31 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
     removePeerEventListener,
   ])
 
+  useEffect(() => {
+    setPeers(peers => participants.map((participant, index) => {
+      const peer = peers.find(peer => peer.connectionId === participant.connectionId)
+
+      return {
+        connectionId: participant.connectionId,
+        participant,
+        isInitiator: index % 2 === 0,
+        connection: peer?.connection ?? null,
+        dataChannel: peer?.dataChannel ?? null,
+      }
+    }))
+  }, [participants])
+
   if (!contextValue) {
     return
   }
 
   return (
     <WebRTCContext.Provider value={contextValue}>
-      {others.map(participant => (
+      {others.map(peer => (
         <PeerContainer
-          key={participant.connectionId}
+          key={peer.connectionId}
           self={contextValue.self}
-          participant={participant}
-          isInitiator={participant.i % 2 === 0}
+          peer={peer}
         />
       ))}
       {children}
@@ -261,20 +269,30 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
           payload: {},
         })
 
-        if (peer.dataChannel.readyState !== 'open') {
+        if (peer.dataChannel?.readyState !== 'open') {
           const onPeerDataChannelOpen = () => {
             bufferRef.current.get(peer.connectionId)?.forEach(event => {
-              try {
-                peer.dataChannel.send(JSON.stringify(event))
-              } catch (error) {
-                console.log(error)
+              if (peer.dataChannel) {
+                try {
+                  peer.dataChannel.send(JSON.stringify(event))
+                } catch (error) {
+                  console.log(error)
+                  addEventToBuffer(peer.connectionId, event)
+                }
+              } else {
                 addEventToBuffer(peer.connectionId, event)
               }
             })
           }
-          peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
+
+          if (peer.dataChannel) {
+            peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
+          }
+
           disposers.push(() => {
-            peer.dataChannel.removeEventListener('open', onPeerDataChannelOpen)
+            if (peer.dataChannel) {
+              peer.dataChannel.removeEventListener('open', onPeerDataChannelOpen)
+            }
           })
         }
       }
@@ -293,7 +311,9 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
 
     return () => {
       for (const peer of Array.from(peers.values())) {
-        peer.dataChannel.onmessage = null
+        if (peer.dataChannel) {
+          peer.dataChannel.onmessage = null
+        }
       }
 
       disposers.forEach(disposer => disposer())
