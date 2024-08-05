@@ -118,18 +118,21 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
     setPeers(peers => peers.filter(peer => peer.connectionId !== connectionId))
   }, [])
 
-  const self = useMemo(() => peers.find(p => p.participant.user.id === userId), [peers, userId])
+  const self = useMemo(() => participants.find(p => p.user.id === userId), [participants, userId])
   const selfConnectionId = self?.connectionId
-  const selfParticipant = self?.participant
-  const others = useMemo(() => peers.filter(p => p.connectionId !== selfConnectionId), [peers, selfConnectionId])
+  const participantsWithIndices = useMemo(() => participants.map((p, i) => ({ ...p, i })), [participants])
+  const others = useMemo(
+    () => participantsWithIndices.filter(p => p.connectionId !== selfConnectionId),
+    [participantsWithIndices, selfConnectionId],
+  )
   const { send, broadcast, addPeerEventListener, removePeerEventListener } = usePeerMessageHandler(
     peers,
     self?.connectionId ?? '',
   )
-  const contextValue = useMemo<WebRTCContextValue | null>(() => !selfParticipant ? null : ({
+  const contextValue = useMemo<WebRTCContextValue | null>(() => !self ? null : ({
     userKey,
     roomKey,
-    self: selfParticipant,
+    self,
     room,
     iceServers,
     peers,
@@ -142,7 +145,7 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
   }), [
     userKey,
     roomKey,
-    selfParticipant,
+    self,
     room,
     iceServers,
     peers,
@@ -155,18 +158,18 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
   ])
 
   useEffect(() => {
-    setPeers(peers => participants.map((participant, index) => {
+    setPeers(peers => others.map(participant => {
       const peer = peers.find(peer => peer.connectionId === participant.connectionId)
 
       return {
         connectionId: participant.connectionId,
         participant,
-        isInitiator: index % 2 === 0,
+        isInitiator: participant.i % 2 === 0,
         connection: peer?.connection ?? null,
         dataChannel: peer?.dataChannel ?? null,
       }
     }))
-  }, [participants])
+  }, [others])
 
   if (!contextValue) {
     return
@@ -174,7 +177,7 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
 
   return (
     <WebRTCContext.Provider value={contextValue}>
-      {others.map(peer => (
+      {peers.map(peer => (
         <PeerContainer
           key={peer.connectionId}
           self={contextValue.self}
