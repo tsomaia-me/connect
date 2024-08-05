@@ -8,34 +8,36 @@ export class RoomBuilder {
   }
 
   withName(name: string) {
-    this.room = this.getClone()
-    this.room.name = name
+    const builder = this.getClone()
+    builder.room.name = name
 
-    return this
+    return builder
   }
 
   withParticipant(participant: Participant) {
     if (!this.room.participants.map(participant => participant.user.id).includes(participant.user.id)) {
-      this.room = this.getClone()
-      this.room.participants.push(participant)
+      const builder = this.getClone()
+      builder.room.participants.push(participant)
+
+      return builder
     }
 
     return this
   }
 
   withoutParticipant(participant: Participant) {
-    this.room = this.getClone()
-    this.room.participants = this.room.participants.filter(p => p.user.id !== participant.user.id)
+    const builder = this.getClone()
+    builder.room.participants = this.room.participants.filter(p => p.user.id !== participant.user.id)
 
-    return this
+    return builder
   }
 
   withMaskedKeys() {
-    this.room = this.getClone()
-    this.room.key = ''
-    this.room.hostKey = ''
+    const builder = this.getClone()
+    builder.room.key = ''
+    builder.room.hostKey = ''
 
-    return this
+    return builder
   }
 
   toModel() {
@@ -60,7 +62,7 @@ export class RoomBuilder {
     newRoom.hostKey = this.room.hostKey
     newRoom.participants = this.room.participants.slice()
 
-    return newRoom
+    return new RoomBuilder(newRoom)
   }
 }
 
@@ -72,21 +74,21 @@ export class UserBuilder {
   }
 
   withUsername(username: string) {
-    this.user = this.getClone()
-    this.user.username = username
+    const builder = this.getClone()
+    builder.user.username = username
 
-    return this
+    return builder
   }
 
   withMaskedKeys() {
-    this.user = this.getClone()
-    this.user.key = ''
+    const builder = this.getClone()
+    builder.user.key = ''
 
-    return this
+    return builder
   }
 
   toModel() {
-    return this.getClone()
+    return this.getClone().user
   }
 
   toJson() {
@@ -98,11 +100,11 @@ export class UserBuilder {
   }
 
   private getClone() {
-    const newUser = new User()
-    newUser.id = this.user.id
-    newUser.key = this.user.key
-    newUser.username = this.user.username
+    const clonedUser = new User()
+    clonedUser.id = this.user.id
+    clonedUser.key = this.user.key
+    clonedUser.username = this.user.username
 
-    return newUser
+    return new UserBuilder(clonedUser)
   }
 }
