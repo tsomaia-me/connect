@@ -105,7 +105,7 @@ export class AppGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage('icecandidate')
   async icecandidate(@MessageBody() data: OfferSignal) {
-    console.log('received icecandidate', data)
+    console.log('received icecandidate')
     return await this.send(data.receiverId, 'icecandidate', data)
   }
 
@@ -113,6 +113,7 @@ export class AppGateway implements OnGatewayDisconnect {
     const connection = this.connections.get(receiverId)
 
     if (!connection) {
+      console.log(`failed to send ${event}, no connection found for`, receiverId)
       return
     }
 
