@@ -7,7 +7,7 @@ export interface SocketProviderProps extends PropsWithChildren {
   url: string
 }
 
-export function useSocket() {
+export function useSignaler() {
   return useContext(SocketContext)
 }
 

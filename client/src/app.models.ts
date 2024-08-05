@@ -6,7 +6,7 @@ export interface User {
 
 export interface Participant {
   user: User
-  nonce: string
+  connectionId: string
 }
 
 export interface Room {

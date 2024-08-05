@@ -1,10 +1,11 @@
 import { Room, User } from '@/app.models'
 import { Dashboard } from '@/components/Dashboard'
 import { useEffect, useRef, useState } from 'react'
-import { useEmitter } from '@/components/shared/hooks'
-import { useSocket } from '@/components/SocketProvider'
+import { useSignalerSender } from '@/components/shared/hooks'
+import { useSignaler } from '@/components/SocketProvider'
 import { Peer, PeersMap, PeersRecord } from '@/app.types'
 import { RoomControlsProvider } from '@/components/RoomControlsProvider'
+import { PeerContainer } from '@/components/PeerContainer'
 
 export interface RoomViewProps {
   userKey: string
@@ -13,24 +14,10 @@ export interface RoomViewProps {
   room: Room
 }
 
-const ICE_SERVERS = [
-  {
-    urls: 'stun:stun.services.mozilla.com:3478',
-  },
-  // {
-  //   urls: 'stun:165.232.76.90:3478',
-  // },
-  {
-    urls: 'turn:165.232.76.90:3478',
-    username: 'tsomaiame',
-    credential: 'dsdgm31990',
-  },
-]
-
 export function PeerConnectionContainer(props: RoomViewProps) {
   const { userKey, roomKey, user, room } = props
-  const socket = useSocket()
-  const emit = useEmitter()
+  const socket = useSignaler()
+  const emit = useSignalerSender()
   const peersRef = useRef<PeersRecord>({})
   const [peers, setPeers] = useState<PeersMap>(new Map())
   const userId = user.id
@@ -47,7 +34,7 @@ export function PeerConnectionContainer(props: RoomViewProps) {
         const peer = peersRef.current[peerId]
         const participant = room.participants.find(p => p.user.id === peerId)
 
-        if (!participant || participant.nonce !== peer.participant.nonce) {
+        if (!participant || participant.connectionId !== peer.participant.connectionId) {
           if (peer.connection.connectionState !== 'closed') {
             peer.dataChannel.close()
             peer.connection.close()
@@ -63,7 +50,7 @@ export function PeerConnectionContainer(props: RoomViewProps) {
     room.participants.forEach(async participant => {
       const existingParticipant = peersRef.current[participant.user.id]?.participant
 
-      if (participant.user.id === userId || (existingParticipant && existingParticipant.nonce === participant.nonce)) {
+      if (participant.user.id === userId || (existingParticipant && existingParticipant.connectionId === participant.connectionId)) {
         console.log('cancelling offer', {
           isSameUser: participant.user.id === userId,
           alreadyConnected: peersRef.current[participant.user.id],

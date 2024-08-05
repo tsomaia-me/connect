@@ -1,6 +1,6 @@
 import { DependencyList, useCallback, useEffect, useState } from 'react'
 import { FieldParams, SocketResponse } from '@/components/shared/types'
-import { useSocket } from '@/components/SocketProvider'
+import { useSignaler } from '@/components/SocketProvider'
 import { User } from '@/app.models'
 
 export function useMutation<T extends Function>(callback: T, deps: DependencyList) {
@@ -34,8 +34,8 @@ export function useField<T extends string | number | null>(initialValue: T): Fie
   } as FieldParams<T>
 }
 
-export function useEmitter(): <T>(message: string, payload: unknown) => void {
-  const socket = useSocket()
+export function useSignalerSender(): <T>(message: string, payload: unknown) => void {
+  const socket = useSignaler()
 
   return useCallback(async (message: string, payload: unknown) => {
     socket.emit(message, payload)
@@ -43,7 +43,7 @@ export function useEmitter(): <T>(message: string, payload: unknown) => void {
 }
 
 export function useRealtimeData<T>(message: string, key: unknown): [T | null, unknown | null] {
-  const socket = useSocket()
+  const socket = useSignaler()
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<unknown | null>(null)
 

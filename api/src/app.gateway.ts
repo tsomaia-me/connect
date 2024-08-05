@@ -9,7 +9,7 @@ import { Socket } from 'socket.io'
 import { v4 as uuid } from 'uuid'
 import { UserService } from './user.service'
 import { RoomService } from './room.service'
-import { JoinRoomSignal, OfferSignal } from './app.models'
+import { JoinRoomSignal, OfferSignal, User } from './app.models'
 import { RoomEvent, SocketEvent, UserEvent } from './app.types'
 import { toProtectedSerializedRoom, toProtectedSerializedUser } from './app.serializers'
 import { filter, map, startWith, Subject } from 'rxjs'
@@ -17,7 +17,7 @@ import { toSocketErrorResponse, toSocketEvent, toSocketSuccessResponse } from '.
 
 @WebSocketGateway({ cors: true })
 export class AppGateway implements OnGatewayDisconnect {
-  private connections = new Map<string, Socket>()
+  private connections = new Map<string, { user: User, socket: Socket }>()
   private events$ = new Subject<SocketEvent>()
 
   constructor(
@@ -70,11 +70,15 @@ export class AppGateway implements OnGatewayDisconnect {
       return toSocketErrorResponse(404, `Invalid room key: ${data.roomKey}`)
     }
 
-    this.connections.set(user.id, socket)
+    const connectionId = `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`
+    this.connections.set(connectionId, {
+      user,
+      socket,
+    })
 
     const updatedRoom = await this.roomService.updateByKey(room.key, builder => builder.withParticipant({
       user,
-      nonce: `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`,
+      connectionId,
     }))
 
     this.events$.next({
@@ -109,15 +113,14 @@ export class AppGateway implements OnGatewayDisconnect {
       return
     }
 
-    const user = await this.userService.findById(receiverId)
-    console.log('emitting', event, 'to', user?.username)
+    console.log('emitting', event, 'to', connection.user?.username)
 
-    connection.emit(event, message)
+    connection.socket.emit(event, message)
   }
 
   async handleDisconnect(socket: Socket) {
     for (const [id, connection] of this.connections.entries()) {
-      if (socket === connection) {
+      if (socket === connection.socket) {
         const user = await this.userService.findById(id)
 
         if (!user) {

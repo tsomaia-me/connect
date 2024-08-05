@@ -18,7 +18,7 @@ export class User {
 
 export class Participant {
   user: User
-  nonce: string
+  connectionId: string
 }
 
 export class CreateRoomModel {
