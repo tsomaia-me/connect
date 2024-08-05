@@ -17,7 +17,7 @@ export class RoomBuilder {
   withParticipant(participant: Participant) {
     const builder = this.getClone()
 
-    if (!this.room.participants.map(participant => participant.user.id).includes(participant.user.id)) {
+    if (!builder.room.participants.map(p => p.user.id).includes(participant.user.id)) {
       builder.room.participants.push(participant)
     } else {
       builder.room.participants = builder.room.participants
@@ -29,7 +29,8 @@ export class RoomBuilder {
 
   withoutParticipant(participant: Participant) {
     const builder = this.getClone()
-    builder.room.participants = this.room.participants.filter(p => p.user.id !== participant.user.id)
+    builder.room.participants = builder.room.participants
+      .filter(p => p.user.id !== participant.user.id)
 
     return builder
   }
