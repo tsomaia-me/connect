@@ -63,8 +63,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
       if (isClosed) {
         logMessage(`ICE connection state changed to: ${connection.iceConnectionState}, closing`)
-        connection.close()
-        removePeer(participant.connectionId)
+        closeConnection()
       }
     }
 
@@ -74,6 +73,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
     dataChannel.onclose = () => {
       logMessage('Data channel closed')
+      closeConnection()
     }
 
     socket.on('offer', onOfferSignal)
@@ -168,6 +168,11 @@ export function PeerContainer(props: PeerContainerProps) {
       } catch (error) {
         logError('Failed to add ICE candidate', error)
       }
+    }
+
+    function closeConnection() {
+      connection.close()
+      removePeer(participant.connectionId)
     }
 
     function logMessage(message: string, ...args: unknown[]) {
