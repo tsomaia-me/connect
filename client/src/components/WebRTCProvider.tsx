@@ -272,6 +272,15 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
               payload: {},
             })
 
+            broadcast({
+              event: 'open',
+              payload: {},
+            })
+          }
+
+          function onPeerReportedOpen() {
+            console.log('Peer is open, sending buffered messages')
+
             bufferRef.current.get(peer.connectionId)?.forEach(event => {
               if (peer.dataChannel) {
                 try {
@@ -286,6 +295,8 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
             })
           }
 
+          addPeerEventListener('open', onPeerReportedOpen)
+
           if (peer.dataChannel) {
             peer.dataChannel.addEventListener('open', onPeerDataChannelOpen, { once: true })
           }
@@ -294,6 +305,8 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
             if (peer.dataChannel) {
               peer.dataChannel.removeEventListener('open', onPeerDataChannelOpen)
             }
+
+            removePeerEventListener('open', onPeerReportedOpen)
           })
         }
       }
@@ -320,7 +333,7 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
 
       disposers.forEach(disposer => disposer())
     }
-  }, [peers])
+  }, [peers, broadcast, addPeerEventListener, removePeerEventListener])
 
   return {
     send,
