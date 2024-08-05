@@ -41,7 +41,7 @@ export class RoomBuilder {
   }
 
   toModel() {
-    return this.getClone()
+    return this.getClone().room
   }
 
   toJson() {
