@@ -105,6 +105,7 @@ export class AppGateway implements OnGatewayDisconnect {
 
   @SubscribeMessage('icecandidate')
   async icecandidate(@MessageBody() data: OfferSignal) {
+    console.log('received icecandidate', data)
     return await this.send(data.receiverId, 'icecandidate', data)
   }
 

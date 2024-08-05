@@ -48,7 +48,7 @@ export function PeerContainer(props: PeerContainerProps) {
         logMessage('Sending ICE candidate', event.candidate)
         sendSignal('icecandidate', {
           senderId: self.connectionId,
-          receiverId: participant.user.id,
+          receiverId: participant.connectionId,
           payload: event.candidate,
         })
       }
@@ -63,13 +63,6 @@ export function PeerContainer(props: PeerContainerProps) {
         logMessage(`ICE connection state changed to: ${connection.iceConnectionState}, closing`)
         connection.close()
         removePeer(participant.connectionId)
-      }
-    }
-
-    connection.onnegotiationneeded = () => {
-      if (peerRef.current.isInitiator) {
-        logMessage('Negotiation needed')
-        // void sendOffer()
       }
     }
 
@@ -126,7 +119,7 @@ export function PeerContainer(props: PeerContainerProps) {
         await connection.setLocalDescription(answer)
         sendSignal('answer', {
           senderId: self.connectionId,
-          receiverId: offer.senderId,
+          receiverId: participant.connectionId,
           payload: answer,
         })
         await addBufferedIceCandidates()
@@ -176,7 +169,12 @@ export function PeerContainer(props: PeerContainerProps) {
 
     if (peerRef.current.isInitiator) {
       logMessage('Initiating offer')
-      void sendOffer()
+      sendOffer().then(() => {
+        connection.onnegotiationneeded = () => {
+          logMessage('Negotiation needed')
+          void sendOffer()
+        }
+      })
     } else {
       logMessage('Waiting for offer')
     }
