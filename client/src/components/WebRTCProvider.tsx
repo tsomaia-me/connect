@@ -203,12 +203,12 @@ function usePeerMessageHandler(peers: Peer[], selfId: string) {
     listenersRef.current.get(eventName)?.delete(listener)
   }, [peers])
 
-  const addEventToBuffer = useCallback((id: string, event: PeerEvent) => {
-    if (!bufferRef.current.has(id)) {
-      bufferRef.current.set(id, [])
+  const addEventToBuffer = useCallback((connectionId: string, event: PeerEvent) => {
+    if (!bufferRef.current.has(connectionId)) {
+      bufferRef.current.set(connectionId, [])
     }
 
-    bufferRef.current.get(id)?.push({
+    bufferRef.current.get(connectionId)?.push({
       ...event,
       peerId: selfId,
     } as PeerEvent)

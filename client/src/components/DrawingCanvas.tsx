@@ -152,7 +152,7 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
 
     function onPeerJoined(event: PeerEvent) {
       if (drawingRef.current.length > 0) {
-        console.log('sending drawing to new peer:', roomRef.current.participants.find(p => p.user.id === event.peerId)?.user.username, drawingRef.current)
+        console.log('sending drawing to new peer:', roomRef.current.participants.find(p => p.connectionId === event.peerId)?.user.username, drawingRef.current)
 
         sendRef.current(event.peerId, {
           event: 'drawing',
@@ -164,7 +164,7 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
     }
 
     function onDrawing(event: PeerEvent) {
-      console.log('received drawing from', roomRef.current.participants.find(p => p.user.id === event.peerId)?.user.username, event.payload.drawing)
+      console.log('received drawing from', roomRef.current.participants.find(p => p.connectionId === event.peerId)?.user.username, event.payload.drawing)
       drawingRef.current = event.payload.drawing
 
       ctx.save()
