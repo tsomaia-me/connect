@@ -78,15 +78,16 @@ export function PeerContainer(props: PeerContainerProps) {
 
     socket.on('offer', onOfferSignal)
 
-    socket.on('answer', onAnswer)
+    socket.on('answer', onAnswerSignal)
     
     socket.on('icecandidate', onIceCandidateSignal)
 
     function onOfferSignal(event: SignalEvent<RTCSessionDescriptionInit>) {
-      void sendAnswer(event.payload)
+      void receiveOffer(event.payload)
+        .then(() => sendAnswer())
     }
 
-    function onAnswer(event: SignalEvent<RTCSessionDescriptionInit>) {
+    function onAnswerSignal(event: SignalEvent<RTCSessionDescriptionInit>) {
       void receiveAnswer(event.payload)
     }
 
@@ -96,7 +97,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function addBufferedIceCandidates() {
       if (iceCandidatesBuffer.length > 0) {
-        console.log(`Adding ${iceCandidatesBuffer.length} buffered ICE candidates`)
+        logMessage(`Adding ${iceCandidatesBuffer.length} buffered ICE candidates`)
         for (const iceCandidate of iceCandidatesBuffer) {
           await addIceCandidate(iceCandidate)
         }
@@ -120,9 +121,18 @@ export function PeerContainer(props: PeerContainerProps) {
       }
     }
 
-    async function sendAnswer(offer: RTCSessionDescriptionInit) {
+    async function receiveOffer(offer: RTCSessionDescriptionInit) {
       try {
         await connection.setRemoteDescription(offer)
+        await addBufferedIceCandidates()
+        logMessage('An offer received')
+      } catch (error) {
+        logError('Failed to receive an answer', error)
+      }
+    }
+
+    async function sendAnswer() {
+      try {
         const answer = await connection.createAnswer()
         await connection.setLocalDescription(answer)
         sendSignal('answer', {
@@ -130,7 +140,6 @@ export function PeerContainer(props: PeerContainerProps) {
           receiverId: participant.connectionId,
           payload: answer,
         })
-        await addBufferedIceCandidates()
         logMessage('An answer sent')
       } catch (error) {
         logError('Failed to send an answer', error)
@@ -189,7 +198,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
     return () => {
       socket.off('offer', onOfferSignal)
-      socket.off('answer', onAnswer)
+      socket.off('answer', onAnswerSignal)
       socket.off('icecandidate', onIceCandidateSignal)
 
       connection.onicecandidate = null
