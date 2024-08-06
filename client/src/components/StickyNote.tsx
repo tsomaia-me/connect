@@ -62,7 +62,7 @@ export function StickyNote(props: StickyNoteProps) {
   }, [isAuthor, enableMoving])
 
   const handleNoteContentChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (isAuthor) {
+    if (!isAuthor) {
       return
     }
 
