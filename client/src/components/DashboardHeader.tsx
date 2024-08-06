@@ -17,6 +17,7 @@ export function DashboardHeader() {
       <div className="flex -space-x-3">
         {displayedParticipants.map((participant, index) => (
           <ProfileCircle
+            key={participant.connectionId}
             className={bgOptions[index % bgOptions.length]}
             zIndex={baseZIndex + index}
           >

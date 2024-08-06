@@ -22,7 +22,7 @@ export type SocketResponse<T> = SocketSuccessResponse<T> | SocketErrorResponse
 export type HtmlButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>
 
 export type Point = [x: number, y: number]
-export type TimePoint = [x: number, y: number, time: number]
+export type MetaPoint = [x: number, y: number, ...meta: unknown[]]
 export interface Box {
   width: number
   height: number

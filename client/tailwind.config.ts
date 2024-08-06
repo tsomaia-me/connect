@@ -20,6 +20,8 @@ const config: Config = {
     extend: {
       animation: {
         'enter-in': 'scale-in 150ms ease-in forwards',
+        open: 'open 0.25s ease-out forwards',
+        close: 'close 0.25s ease-out forwards',
       },
       keyframes: {
         'scale-in': {
@@ -29,7 +31,15 @@ const config: Config = {
           '100%': {
             transform: 'scale(1.1)',
           },
-        }
+        },
+        open: {
+          '0%': { transform: 'translateY(-10px)', opacity: 0 },
+          '100%': { transform: 'translateY(0)', opacity: 1 },
+        },
+        close: {
+          '0%': { transform: 'translateY(0)', opacity: 1 },
+          '100%': { transform: 'translateY(-10px)', opacity: 0 },
+        },
       }
     }
   },

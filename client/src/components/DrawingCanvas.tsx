@@ -8,15 +8,17 @@ import {
   useSender
 } from '@/components/WebRTCProvider'
 import { Room } from '@/app.models'
-import { TimePoint } from '@/components/shared/types'
+import { MetaPoint } from '@/components/shared/types'
 import { getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
 
 export interface DrawingCanvasProps {
   isActive: boolean
+  selectedSize: number
+  selectedColor: string
 }
 
 export function DrawingCanvas(props: DrawingCanvasProps) {
-  const { isActive } = props
+  const { isActive, selectedSize, selectedColor } = props
   const room = useRoom()
   const send = useSender()
   const broadcast = useBroadcaster()
@@ -29,8 +31,11 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
   const addPeerEventListenerRef = useRef(addPeerEventListener)
   const removePeerEventListenerRef = useRef(removePeerEventListener)
   const isActiveRef = useRef<boolean>(isActive)
-  const drawingRef = useRef<TimePoint[][]>([])
+  const drawingRef = useRef<MetaPoint[][]>([])
   const roomRef = useRef<Room>(room)
+  const canvasContextRef = useRef<CanvasRenderingContext2D | null>(null)
+  const selectedSizeRef = useRef(2)
+  const selectedColorRef = useRef('white')
 
   isActiveRef.current = isActive
   sendRef.current = send
@@ -38,6 +43,15 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
   roomRef.current = room
   addPeerEventListenerRef.current = addPeerEventListener
   removePeerEventListenerRef.current = removePeerEventListener
+
+  useEffect(() => {
+    if (canvasContextRef.current) {
+      canvasContextRef.current!.strokeStyle = selectedColor
+    }
+
+    selectedSizeRef.current = selectedSize
+    selectedColorRef.current = selectedColor
+  }, [selectedSize, selectedColor])
 
   useEffect(() => {
 
@@ -59,8 +73,8 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
     }
 
     let isMouseActive = false
-    let points: TimePoint[] = []
-    const peerPoints = new Map<string, TimePoint[]>()
+    let points: MetaPoint[] = []
+    const peerPoints = new Map<string, MetaPoint[]>()
 
     function schedule(task: () => void) {
       animationTasks.unshift(task)
@@ -73,13 +87,11 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
       redraw()
     }
 
-    function draw(points: TimePoint[]) {
+    function draw(points: MetaPoint[]) {
       if (points.length < 4) {
         return
       }
 
-      ctx.lineWidth = 2
-      ctx.strokeStyle = 'white'
       ctx.beginPath()
       ctx.moveTo(points[0][0], points[0][1])
 
@@ -88,6 +100,8 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
         const cp1y = (points[i][1] + points[i + 1][1]) / 2
         const cp2x = (points[i + 1][0] + points[i + 2][0]) / 2
         const cp2y = (points[i + 1][1] + points[i + 2][1]) / 2
+        ctx.lineWidth = points[i][2] as number
+        ctx.strokeStyle = points[i][3] as string
         ctx.bezierCurveTo(
           cp1x,
           cp1y,
@@ -98,6 +112,8 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
         )
       }
 
+      ctx.lineWidth = points[points.length - 1][2] as number
+      ctx.strokeStyle = points[points.length - 1][3] as string
       ctx.bezierCurveTo(
         points[points.length - 3][0],
         points[points.length - 3][1],
@@ -118,7 +134,7 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
       }
 
       isMouseActive = true
-      const point: TimePoint = [event.offsetX, event.offsetY, performance.now()]
+      const point: MetaPoint = [event.offsetX, event.offsetY, selectedSizeRef.current, selectedColorRef.current]
       points = [point]
       drawingRef.current.push([getRelativePoint(point, canvas)])
       broadcastRef.current({
@@ -131,7 +147,7 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
 
     function onMouseMove(event: { offsetX: number; offsetY: number }) {
       if (isMouseActive) {
-        const point: TimePoint = [event.offsetX, event.offsetY, performance.now()]
+        const point: MetaPoint = [event.offsetX, event.offsetY, selectedSizeRef.current, selectedColorRef.current]
 
         points.push(point)
         schedule(() => draw(points))
@@ -201,11 +217,11 @@ export function DrawingCanvas(props: DrawingCanvasProps) {
     }
 
     function onPeerDrawStart(event: PeerEvent) {
-      peerPoints.set(event.peerId, [getAbsolutePoint(event.payload.point as TimePoint, canvas)])
+      peerPoints.set(event.peerId, [getAbsolutePoint(event.payload.point as MetaPoint, canvas)])
     }
 
     function onPeerDraw(event: PeerEvent) {
-      const point = getAbsolutePoint(event.payload.point as TimePoint, canvas)
+      const point = getAbsolutePoint(event.payload.point as MetaPoint, canvas)
       const points = peerPoints.get(event.peerId) ?? []
       points.push(point)
       schedule(() => draw(points))
