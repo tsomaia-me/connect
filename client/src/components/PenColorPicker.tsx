@@ -27,9 +27,9 @@ export function PenColorPicker(props: PenColorPickerProps) {
         <div
           key={index}
           className={classNames(
-            'w-8 h-8 rounded-full cursor-pointer border-2 border-white',
+            'w-8 h-8 rounded-full cursor-pointer border-4',
             color,
-            selectedColor === colorMap[color] && 'border-blue-400',
+            selectedColor === colorMap[color] ? 'border-blue-500' : 'border-white',
             `transition-transform duration-300 delay-${index * 100}`,
           )}
           onClick={() => onSelectColor(colorMap[color])}

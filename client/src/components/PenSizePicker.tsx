@@ -42,9 +42,9 @@ export function PenSizePicker(props: PenSizePickerProps) {
         <div
           key={index}
           className={classNames(
-            'w-8 h-8 rounded-full cursor-pointer border-4 border-white text-white flex justify-center items-center',
+            'w-8 h-8 rounded-full cursor-pointer border-4 text-white flex justify-center items-center',
             size,
-            selectedSize === SizeMap[size] && 'border-sky-600',
+            selectedSize === SizeMap[size] ? 'border-blue-500' : 'border-white',
             `transition-transform duration-300 delay-${index * 100}`,
           )}
           onClick={() => onSelectSize(SizeMap[size])}
