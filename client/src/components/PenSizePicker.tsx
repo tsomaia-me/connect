@@ -35,7 +35,7 @@ export function PenSizePicker(props: PenSizePickerProps) {
 
   return (
     <div className={classNames(
-      'flex flex-col gap-4 h-[320px]',
+      'flex flex-col gap-4 h-[220px]',
       isOpen ? 'animate-open' : 'animate-close'
     )}>
       {Object.keys(SizeMap).map((size, index) => (

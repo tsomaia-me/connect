@@ -11,7 +11,6 @@ const colorMap = {
   'bg-red-500': '#EF4444',
   'bg-green-500': '#10B981',
   'bg-blue-500': '#3B82F6',
-  'bg-yellow-500': '#F59E0B',
   'bg-purple-500': '#8B5CF6',
   'bg-pink-500': '#EC4899',
 };
@@ -21,7 +20,7 @@ export function PenColorPicker(props: PenColorPickerProps) {
 
   return (
     <div className={classNames(
-      'flex flex-col gap-4 h-[320px]',
+      'flex flex-col gap-4 h-[320px] justify-end',
       isOpen ? 'animate-open' : 'animate-close'
     )}>
       {Object.keys(colorMap).map((color, index) => (
