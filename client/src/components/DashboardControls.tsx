@@ -1,7 +1,7 @@
 import { IconButton } from '@/components/shared/IconButton'
 import { Pen } from '@/components/icons/Pen'
 import { FilePen } from '@/components/icons/FilePen'
-import { MouseEvent, useCallback, useState } from 'react'
+import { MouseEvent, useCallback } from 'react'
 import { useDashboardNotesContext } from '@/components/DashboardNotesProvider'
 import { generateId } from '@/components/shared/utils'
 import { useSelf } from '@/components/WebRTCProvider'
@@ -55,7 +55,7 @@ export function DashboardControls(props: DashboardControlsProps) {
   return (
     <div className="flex flex-col justify-center absolute right-0 h-full px-4">
       <div className="flex flex-col gap-4 justify-between items-center h-full py-24">
-        <div className="h-[320px] mb-4">
+        <div className="h-[200px] mb-4">
           <PenSizePicker
             isOpen={selectedControl === 'pen'}
             selectedSize={selectedSize}
