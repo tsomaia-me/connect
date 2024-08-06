@@ -1,4 +1,4 @@
-import { generateId, getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
+import { generateId, getAbsolutePoint, getRelativePoint, readAsArrayBuffer } from '@/components/shared/utils'
 import classNames from 'classnames'
 import { Note, Point } from '@/components/shared/types'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -114,17 +114,14 @@ export function StickyNote(props: StickyNoteProps) {
             type: file.type,
             size: file.size,
             isPrimary: false,
+            metadata: {},
           },
         ],
       })
 
-      const fileReader = new FileReader()
-      fileReader.onload = event => {
-        if (event.target) {
-          loadAttachmentRef.current(id, event.target!.result as ArrayBuffer)
-        }
-      }
-      fileReader.readAsArrayBuffer(file)
+      readAsArrayBuffer(file).then(buffer => {
+        loadAttachmentRef.current(id, buffer)
+      })
     }
   }, [noteId, noteAttachments, updateNote])
 

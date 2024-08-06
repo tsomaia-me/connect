@@ -107,11 +107,11 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   }, [])
 
   const syncAttachments = useCallback((note?: Note | UpdateNote, isRemote = false) => {
-    const selectedNotes = note ? [note] : notesRef.current
+    const selectedNotes = note ? [note] : notes
 
     if (!note || note?.attachments?.length) {
       setAttachmentStates(attachmentStates => {
-        const clonedAttachmentStates = { ... attachmentStates }
+        const clonedAttachmentStates = { ...attachmentStates }
 
         for (const note of selectedNotes) {
           const noteAttachments = note.attachments
@@ -122,10 +122,11 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
               clonedAttachmentStates[attachment.id] = {
                 id: attachment.id,
                 attachment,
-                status: existingAttachment?.status ?? (isRemote ? 'placeholder' : 'local'),
                 error: null,
                 partialContent: null,
                 content: null,
+                ...(existingAttachment ?? {}),
+                status: existingAttachment?.status ?? (isRemote ? 'placeholder' : 'local'),
               }
             })
           }
@@ -134,7 +135,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
         return clonedAttachmentStates
       })
     }
-  }, [])
+  }, [notes])
 
   const removeAttachments = useCallback((ids: string[]) => {
     setAttachmentStates(attachmentStates => {
@@ -278,19 +279,13 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   }, [attachmentStates, peers, send])
 
   const loadAttachment = useCallback((attachmentId: string, content: ArrayBuffer | Blob | null) => {
-    setAttachmentStates(attachmentStates => {
-      const clonedAttachmentStates = attachmentStates
-      const attachmentState = attachmentStates[attachmentId]
-
-      if (attachmentState) {
-        clonedAttachmentStates[attachmentId] = {
-          ...attachmentState,
-          content,
-        }
+    setAttachmentStates(attachmentStates => !attachmentStates[attachmentId] ? attachmentStates : ({
+      ...attachmentStates,
+      [attachmentId]: {
+        ...attachmentStates[attachmentId],
+        content,
       }
-
-      return clonedAttachmentStates
-    })
+    }))
   }, [])
 
   const contextValue = useMemo(() => ({

@@ -5,7 +5,7 @@ import { VideoCamera } from '@/components/icons/VideoCamera'
 import classNames from 'classnames'
 import { Bin } from '@/components/icons/Bin'
 import { Stop } from '@/components/icons/Stop'
-import { formatTime, generateId, getFormattedFileSize } from '@/components/shared/utils'
+import { formatTime, generateId, getFormattedFileSize, readAsArrayBuffer } from '@/components/shared/utils'
 import { User } from '@/app.models'
 import { Refresh } from '@/components/icons/Refresh'
 import { Play } from '@/components/icons/Play'
@@ -24,11 +24,17 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
   const userId = user.id
   const noteId = note.id
   const attachments = note.attachments
-  const attachment = useMemo(() => attachments.find(a => a.isPrimary && a.type === 'video/webm'), [attachments])
-  const attachmentId = attachment?.id ?? null
-  const attachmentState = (attachment && attachmentStates[attachment.id]) ?? null
+  const videoAttachment = useMemo(() => attachments.find(a => a.isPrimary && a.role === 'video'), [attachments])
+  const videoAttachmentId = videoAttachment?.id ?? null
+  const videoAttachmentState = (videoAttachment && attachmentStates[videoAttachment.id]) ?? null
+  const thumbnailAttachment = useMemo(() => attachments.find(a => a.role === 'thumbnail'), [attachments])
+  const thumbnailAttachmentId = thumbnailAttachment?.id ?? null
+  const thumbnailAttachmentState = (thumbnailAttachment && attachmentStates[thumbnailAttachment.id]) ?? null
   const recordingVideoRef = useRef<HTMLVideoElement | null>(null)
-  const playVideoRef = useRef<HTMLVideoElement | null>(null)
+  const playerVideoRef = useRef<HTMLVideoElement | null>(null)
+  const streamingVideoRef = useRef<HTMLVideoElement | null>(null)
+  const thumbnailCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const thumbnailImageRef = useRef<HTMLImageElement | null>(null)
   const [isRecordingRequested, setIsRecordingRequested] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -38,6 +44,15 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
   const [recordingDuration, setRecordingDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [recordingSize, setRecordingSize] = useState(0)
+  const loadAttachmentRef = useRef(loadAttachment)
+  const attachmentsRef = useRef(attachments)
+  const videoAttachmentStateRef = useRef(videoAttachmentState)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [thumbnailData, setThumbnailData] = useState<ArrayBuffer | null>(null)
+
+  loadAttachmentRef.current = loadAttachment
+  attachmentsRef.current = attachments
+  videoAttachmentStateRef.current = videoAttachmentState
 
   const handleRecordClick = useCallback(() => {
     setIsRecordingRequested(true)
@@ -45,10 +60,10 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
     setRecordingSize(0)
     setRecordingDuration(0)
 
-    if (attachmentId) {
-      loadAttachment(attachmentId, null)
+    if (videoAttachmentId) {
+      loadAttachmentRef.current(videoAttachmentId, null)
     }
-  }, [attachmentId, loadAttachment])
+  }, [videoAttachmentId])
 
   const handleStopRecordingClick = useCallback(() => {
     const mediaRecorder = mediaRecorderRef.current
@@ -57,9 +72,10 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       mediaRecorder.onstop = () => {
         console.log('recording stopped')
         const recording = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+        const videoAttachmentState = videoAttachmentStateRef.current
         let id
 
-        if (!attachmentState) {
+        if (!videoAttachmentState) {
           id = generateId()
           updateNote({
             id: noteId,
@@ -71,24 +87,29 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
                 type: 'video/webm',
                 size: recordingSize,
                 isPrimary: true,
+                role: 'video',
+                metadata: {
+                  duration: recordingDuration,
+                },
               },
             ],
           })
         } else {
-          id = attachmentState.id
+          id = videoAttachmentState.id
 
           updateNote({
             id: noteId,
-            attachments: attachments.map(a => a.id !== id ? a : {
+            attachments: attachmentsRef.current.map(a => a.id !== id ? a : {
               ...a,
               size: recordingSize,
               isPrimary: true,
+              role: 'video',
             }),
           })
         }
 
-        console.log('load attachment', recording)
-        loadAttachment(id, recording)
+        console.log('load videoAttachment', recording)
+        loadAttachmentRef.current(id, recording)
         mediaRecorderRef.current = null
         recordedChunksRef.current = []
       }
@@ -96,10 +117,10 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
     setIsRecordingRequested(false)
     setIsRecordingStarted(false)
-  }, [userId, noteId, attachmentState, attachments, recordingSize, updateNote, loadAttachment])
+  }, [userId, noteId, recordingSize, recordingDuration, updateNote])
 
   const handlePlayClick = useCallback(() => {
-    const video = playVideoRef.current
+    const video = playerVideoRef.current
 
     console.log('play', video)
 
@@ -109,10 +130,10 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
     void video.play()
     setIsPlaying(true)
-  }, [attachmentId, loadAttachment])
+  }, [videoAttachmentId])
 
   const handlePauseClick = useCallback(() => {
-    const video = playVideoRef.current
+    const video = playerVideoRef.current
 
     console.log('pause', video)
 
@@ -122,7 +143,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
     void video.pause()
     setIsPlaying(false)
-  }, [attachmentId, loadAttachment])
+  }, [videoAttachmentId])
 
   const handleToggleClick = useCallback(() => {
     if (isPlaying) {
@@ -180,58 +201,134 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
   }, [isRecordingRequested])
 
   useEffect(() => {
-    const video = playVideoRef.current
+    const player = playerVideoRef.current
+    const streamer = streamingVideoRef.current
 
-    if (!video || !attachmentState.content || !(attachmentState.content instanceof Blob)) {
+    if (!player || !streamer || !videoAttachmentState?.content || !(videoAttachmentState?.content instanceof Blob)) {
       return
     }
 
+    console.log('hello')
     let interval
-    setRecordingSize(attachmentState.content.size)
-    video.src = URL.createObjectURL(attachmentState.content)
-    video.onplaying = () => {
+    const url = URL.createObjectURL(videoAttachmentState.content)
+    setVideoUrl(url)
+    player.src = url
+    player.onplaying = () => {
+      console.log('on playing')
       setIsPlaying(true)
       setIsPaused(false)
       clearInterval(interval)
-      interval = setInterval(() => setCurrentTime(video.currentTime), 1000)
+      setCurrentTime(player.currentTime)
+      interval = setInterval(() => {
+        console.log('time changed', player.currentTime, formatTime(player.currentTime))
+        setCurrentTime(player.currentTime)
+      }, 1000)
     }
-    video.onended = () => {
+    player.onended = () => {
+      setCurrentTime(0)
       setIsPlaying(false)
       setIsPaused(false)
       clearInterval(interval)
     }
-    video.onpause = () => {
+    player.onpause = () => {
       setIsPlaying(false)
       setIsPaused(true)
       clearInterval(interval)
     }
-    video.onloadedmetadata = () => {
-      if (video.duration === Infinity) {
-        video.currentTime = 1e101
-        video.ontimeupdate = () => {
-          video.ontimeupdate = null
-          video.currentTime = 0
-          console.log('metadata loaded ontimeupdate', video.duration)
-          setRecordingDuration(video.duration)
-        }
-      } else {
-        console.log('metadata loaded', video.duration)
-        setRecordingDuration(video.duration)
-      }
-    }
 
     return () => {
-      video.onplaying = null
-      video.onended = null
-      video.onpause = null
-      video.onloadedmetadata = null
+      player.onplaying = null
+      player.onended = null
+      player.onpause = null
+      player.onloadedmetadata = null
       clearInterval(interval)
     }
-  }, [attachmentState])
+  }, [noteId, videoAttachmentState?.content, updateNote])
+
+  useEffect(() => {
+    const player = playerVideoRef.current
+    const streamer = streamingVideoRef.current
+    const thumbnailCanvas = thumbnailCanvasRef.current
+    const thumbnailImage = thumbnailImageRef.current
+
+    if (!player || !streamer || !thumbnailCanvas || !thumbnailImage || !videoUrl) {
+      return
+    }
+
+    const thumbnailContext = thumbnailCanvas.getContext('2d')
+    streamer.src = player.src
+    console.log('streamer.src', streamer.src, videoUrl)
+    streamer.width = player.width
+    streamer.height = player.height
+    thumbnailCanvas.width = player.width
+    thumbnailCanvas.height = player.height
+    thumbnailImage.width = player.width
+    thumbnailImage.height = player.height
+    streamer.onloadeddata = () => {
+      streamer.onloadeddata = null
+      streamer.oncanplay = () => {
+        streamer.oncanplay = null
+        streamer.currentTime = 1;
+        streamer.onseeked = () => {
+          streamer.onseeked = null
+          thumbnailContext.drawImage(streamer, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
+          thumbnailCanvas.toBlob(thumbnailBlob => {
+            if (!thumbnailBlob) {
+              return
+            }
+
+            readAsArrayBuffer(thumbnailBlob).then(buffer => {
+              setThumbnailData(buffer)
+            })
+          })
+        }
+      }
+    }
+  }, [videoUrl, updateNote])
+
+  useEffect(() => {
+    if (!thumbnailData) {
+      return
+    }
+
+    console.log('streamer.3rc')
+    const id = generateId()
+    updateNote({
+      id: noteId,
+      attachments: [
+        ...attachmentsRef.current.filter(a => a.role !== 'thumbnail'),
+        {
+          id,
+          name: `thumbnail_${userId}_${noteId}_${new Date().toISOString()}`,
+          type: 'image/png',
+          size: new Blob([thumbnailData], { type: 'image/png' }).size,
+          isPrimary: false,
+          role: 'thumbnail',
+          metadata: {},
+        },
+      ],
+    })
+    loadAttachmentRef.current(id, thumbnailData)
+  }, [thumbnailData])
+
+  useEffect(() => {
+    if (isPlaying || isPaused) {
+      return
+    }
+
+    const thumbnailImage = thumbnailImageRef.current
+
+    if (thumbnailImage && thumbnailAttachmentState?.content) {
+      const thumbnailBlob = new Blob([thumbnailAttachmentState.content], {
+        type: thumbnailAttachmentState.attachment.type
+      })
+      thumbnailImage.src = URL.createObjectURL(thumbnailBlob)
+    }
+  }, [isPlaying, isPaused, thumbnailAttachmentState?.content, thumbnailAttachmentState?.attachment.type])
 
   return (
     <div className="flex-1 w-full h-full flex flex-col">
-      {!attachmentState?.content && (
+      {(!videoAttachmentState?.content && videoAttachmentState?.status !== 'placeholder') && (
         <div className="flex flex-col w-full h-full flex-1">
           {!isRecordingStarted && (
             <div
@@ -263,7 +360,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
         </div>
       )}
 
-      {attachmentState?.content && (
+      {videoAttachmentState && (videoAttachmentState?.content || videoAttachmentState.status === 'placeholder') && (
         <div
           className="flex flex-col w-full h-full flex-1 relative bg-black cursor-pointer"
           onClick={handleToggleClick}
@@ -279,26 +376,43 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
           )}
 
           <video
-            ref={playVideoRef}
-            className={classNames('w-full h-full border-0 px-0.5')}
+            ref={playerVideoRef}
+            className={classNames('w-full h-full border-0 px-0.5', !isPlaying && !isPaused && 'hidden')}
+            width={256}
+            height={189}
           ></video>
+
+          {!isPlaying && !isPaused && (
+            <img
+              ref={thumbnailImageRef}
+              alt=""
+            ></img>
+          )}
+
+          <div className="w-0 h-0 overflow-hidden">
+            <video
+              ref={streamingVideoRef}
+            ></video>
+
+            <canvas
+              ref={thumbnailCanvasRef}
+            ></canvas>
+          </div>
         </div>
       )}
 
       <div className="flex justify-between items-center p-2">
         <div className="pl-2 text-gray-400">
-          {(isRecordingRequested || isPlaying || isPaused) && formatTime(
-            isRecordingRequested
-              ? recordingDuration
-              : recordingDuration - currentTime
-          )}
+          {isRecordingRequested && formatTime(recordingDuration)}
+          {(videoAttachmentState && (isPlaying || isPaused))
+            && formatTime(videoAttachmentState.attachment.metadata.duration - currentTime)}
 
           {!isRecordingRequested && !isPlaying && !isPaused ? note.author.username : ''}
 
           {isRecordingRequested && (' / ' + getFormattedFileSize(recordingSize))}
 
-          {(!isPlaying && !isPaused && attachmentState?.attachment) &&
-            ' / ' + getFormattedFileSize(attachmentState.attachment.size )
+          {(!isPlaying && !isPaused && videoAttachmentState?.attachment) &&
+            ' / ' + getFormattedFileSize(videoAttachmentState.attachment.size)
           }
         </div>
 
@@ -314,7 +428,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
             </button>
           )}
 
-          {(attachmentState?.content && !isRecordingRequested && !isPlaying) && (
+          {(videoAttachmentState?.content && !isRecordingRequested && !isPlaying) && (
             <button
               className={classNames(
                 isAuthor ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'

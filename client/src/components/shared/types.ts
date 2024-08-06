@@ -34,6 +34,8 @@ export interface Attachment {
   type: string
   size: number
   isPrimary: boolean
+  role?: 'file' | 'video' | 'thumbnail'
+  metadata: Record<string, any>
 }
 
 export interface Note {

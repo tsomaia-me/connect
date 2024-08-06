@@ -93,3 +93,18 @@ export function formatTime(seconds) {
 
   return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
+
+export async function readAsArrayBuffer(source: File | Blob) {
+  return await new Promise<ArrayBuffer>((resolve, reject) => {
+    const fileReader = new FileReader()
+    fileReader.onload = event => {
+      if (event.target) {
+        resolve(event.target!.result as ArrayBuffer)
+      } else {
+        reject(new Error('[readAsArrayBuffer] empty source'))
+      }
+    }
+    fileReader.onerror = reject
+    fileReader.readAsArrayBuffer(source)
+  })
+}
