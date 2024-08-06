@@ -157,14 +157,14 @@ export function StickyNote(props: StickyNoteProps) {
         />
       )}
 
-      {note.type === 'video' && (
-        <StickyNoteVideo
-          user={user}
-          note={note}
-          isAuthor={isAuthor}
-          onDeleteClick={handleNoteDelete}
-        />
-      )}
+      {/*{note.type === 'video' && (*/}
+      {/*  <StickyNoteVideo*/}
+      {/*    user={user}*/}
+      {/*    note={note}*/}
+      {/*    isAuthor={isAuthor}*/}
+      {/*    onDeleteClick={handleNoteDelete}*/}
+      {/*  />*/}
+      {/*)}*/}
 
 
       <input
