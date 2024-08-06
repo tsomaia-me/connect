@@ -30,7 +30,7 @@ export interface AttachmentState {
   status: 'local' | 'placeholder' | 'downloading' | 'downloaded' | 'failed'
   error: string | null
   partialContent: string | null
-  content: ArrayBuffer | null
+  content: ArrayBuffer | Blob | null
 }
 
 export interface NoteEventsHandlerProps {
@@ -45,7 +45,7 @@ export interface NoteEventsHandlerProps {
   receiveUpdatedNote: (note: UpdateNote) => void
   receiveRemovedNote: (id: string) => void
   downloadAttachment: (noteId: string, attachmentId: string) => void
-  loadAttachment: (attachmentId: string, content: ArrayBuffer) => void
+  loadAttachment: (attachmentId: string, content: ArrayBuffer | Blob | null) => void
 }
 
 const DashboardNotesContext = createContext<NoteEventsHandlerProps>({
@@ -68,7 +68,7 @@ const DashboardNotesContext = createContext<NoteEventsHandlerProps>({
   },
   downloadAttachment: (noteId: string, attachmentId: string) => {
   },
-  loadAttachment: (attachmentId: string, content: ArrayBuffer) => {
+  loadAttachment: (attachmentId: string, content: ArrayBuffer | Blob | null) => {
   },
 })
 
@@ -277,7 +277,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
     }
   }, [attachmentStates, peers, send])
 
-  const loadAttachment = useCallback((attachmentId: string, content: ArrayBuffer) => {
+  const loadAttachment = useCallback((attachmentId: string, content: ArrayBuffer | Blob | null) => {
     setAttachmentStates(attachmentStates => {
       const clonedAttachmentStates = attachmentStates
       const attachmentState = attachmentStates[attachmentId]

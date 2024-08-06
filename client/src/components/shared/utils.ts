@@ -21,6 +21,10 @@ export function getFormattedFileSize(size: number) {
   const units = ['bytes', 'KB', 'MB', 'GB', 'TB']
   let unitIndex = 0
 
+  if (size === 0) {
+    return '0 KB'
+  }
+
   while (size >= 1024 && unitIndex < units.length - 1) {
     size /= 1024
     ++unitIndex
@@ -29,9 +33,9 @@ export function getFormattedFileSize(size: number) {
   return `${size.toFixed(2)} ${units[unitIndex]}`
 }
 
-export function download(attachment: Attachment, content: ArrayBuffer) {
+export function download(attachment: Attachment, content: ArrayBuffer | Blob) {
   const a = document.createElement('a')
-  const blob = new Blob([content], { type: attachment.type })
+  const blob = content instanceof Blob ? content as Blob : new Blob([content], { type: attachment.type })
   a.href = URL.createObjectURL(blob)
   a.download = attachment.name
   document.body.appendChild(a)
@@ -80,4 +84,12 @@ export function getChunks(data: string, chunkSize: number) {
   }
 
   return chunks
+}
+
+export function formatTime(seconds) {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }

@@ -20,9 +20,21 @@ export function DashboardControls(props: DashboardControlsProps) {
   const self = useSelf()
   const user = self.user
   const handleNoteClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    console.log('create new')
     createNote({
       type: 'text',
+      id: generateId(),
+      isDraft: true,
+      width: 256,
+      height: 224,
+      content: '',
+      mode: 'edit',
+      author: { ...user },
+      attachments: [],
+    }, [event.clientX, event.clientY])
+  }, [user, createNote])
+  const handleVideoClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    createNote({
+      type: 'video',
       id: generateId(),
       isDraft: true,
       width: 256,
@@ -45,7 +57,7 @@ export function DashboardControls(props: DashboardControlsProps) {
           <FilePen/>
         </IconButton>
 
-        <IconButton isActive={selectedControl === 'video'} value="video" onClick={e => onSelectControl('video', e)}>
+        <IconButton isActive={selectedControl === 'video'} value="video" onClick={handleVideoClick}>
           <VideoCamera/>
         </IconButton>
       </div>

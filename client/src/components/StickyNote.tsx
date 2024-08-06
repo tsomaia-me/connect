@@ -1,15 +1,13 @@
-import { generateId, getAbsolutePoint, getFormattedFileSize, getRelativePoint } from '@/components/shared/utils'
+import { generateId, getAbsolutePoint, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
 import { Note, Point } from '@/components/shared/types'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
-import { Bin } from '@/components/icons/Bin'
-import { Paperclip } from '@/components/icons/Paperclip'
-import { Download } from '@/components/icons/Download'
 import { useDashboardNotesContext } from '@/components/DashboardNotesProvider'
 import { useSelf } from '@/components/WebRTCProvider'
-import { Spinner } from '@/components/icons/Spinner'
+import { StickyNoteVideo } from '@/components/StickyNoteVideo'
+import { StickyNoteText } from '@/components/StickyNoteText'
 
 export interface StickyNoteProps {
   user: User
@@ -20,7 +18,6 @@ export function StickyNote(props: StickyNoteProps) {
   const { user, note } = props
   const {
     containerSize,
-    attachmentStates,
     updateNote,
     removeNote,
     downloadAttachment,
@@ -113,10 +110,10 @@ export function StickyNote(props: StickyNoteProps) {
           ...noteAttachments,
           {
             id,
-            file,
             name: file.name,
             type: file.type,
             size: file.size,
+            isPrimary: false,
           },
         ],
       })
@@ -135,7 +132,8 @@ export function StickyNote(props: StickyNoteProps) {
     <div
       className={
         classNames(
-          'absolute bg-gray-600 border border-gray-700 rounded-2xl w-64 min-h-56 pointer-events-auto shadow-md',
+          'flex flex-col absolute bg-gray-600 rounded-2xl w-64 pointer-events-auto shadow-md',
+          note.type === 'video' ? 'min-h-64' : 'min-h-56',
         )
       }
       style={notePosition}
@@ -150,54 +148,27 @@ export function StickyNote(props: StickyNoteProps) {
         </button>
       </div>
 
-      <textarea
-        ref={textareaRef}
-        className="bg-transparent w-full min-h-56 p-6 pt-2 focus:outline-none focus:ring-0 border-0 resize-none text-xl text-white overflow-hidden"
-        value={note.content ?? ''}
-        readOnly={!isAuthor}
-        onChange={handleNoteContentChange}
-      />
+      {note.type === 'text' && (
+        <StickyNoteText
+          note={note}
+          isAuthor={isAuthor}
+          textareaRef={textareaRef}
+          onContentChange={handleNoteContentChange}
+          onAttachClick={handleAttachClick}
+          onDownloadAttachmentClick={handleDownloadAttachmentClick}
+          onDeleteClick={handleNoteDelete}
+        />
+      )}
 
-      <div className="mb-4 border-b border-gray-400">
-        {note.attachments.map(attachment => (
-          <div key={attachment.id}
-               className="flex justify-between items-center p-4 text-white text-sm max-w-full overflow-hidden gap-2">
-            <div className="truncate text-ellipsis">{attachment.name}</div>
-            <div className="flex justify-end items-center gap-2">
-              <div className="min-w-16 text-gray-400 text-right">
-                {getFormattedFileSize(attachment.size)}
-              </div>
-              <button onClick={() => handleDownloadAttachmentClick(attachment.id)}>
-                {attachmentStates[attachment.id]?.status === 'downloading' ? <Spinner/> : <Download/>}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {note.type === 'video' && (
+        <StickyNoteVideo
+          user={user}
+          note={note}
+          isAuthor={isAuthor}
+          onDeleteClick={handleNoteDelete}
+        />
+      )}
 
-      <div className="flex justify-between items-center px-2 pb-2">
-        <div className="pl-2 text-gray-400">
-          {note.author.username}
-        </div>
-
-        <div className="flex justify-end items-center gap-4">
-          <button className={
-            classNames(
-              user.id === note.author.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-            )
-          } onClick={handleAttachClick}>
-            <Paperclip/>
-          </button>
-
-          <button className={
-            classNames(
-              user.id === note.author.id ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-            )
-          } onClick={handleNoteDelete}>
-            <Bin/>
-          </button>
-        </div>
-      </div>
 
       <input
         ref={fileRef}
