@@ -41,6 +41,9 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
   const handleRecordClick = useCallback(() => {
     setIsRecordingRequested(true)
+    setCurrentTime(0)
+    setRecordingSize(0)
+    setRecordingDuration(0)
 
     if (attachmentId) {
       loadAttachment(attachmentId, null)
@@ -277,7 +280,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       <div className="flex justify-between items-center p-2">
         <div className="pl-2 text-gray-400">
           {(isRecordingRequested || isPlaying || isPaused)
-            ? formatTime(recordingDuration - currentTime)
+            ? formatTime(isRecordingRequested ? recordingDuration : recordingDuration - currentTime)
             : `${note.author.username} / ${getFormattedFileSize(recordingSize)}`}
         </div>
 
