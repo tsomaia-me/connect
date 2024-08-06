@@ -10,6 +10,7 @@ import { User } from '@/app.models'
 import { Refresh } from '@/components/icons/Refresh'
 import { Play } from '@/components/icons/Play'
 import { Pause } from '@/components/icons/Pause'
+import { Peer, PeerEvent, useWebRTCContext } from '@/components/WebRTCProvider'
 
 export interface StickyNoteVideoProps {
   user: User
@@ -20,6 +21,7 @@ export interface StickyNoteVideoProps {
 
 export function StickyNoteVideo(props: StickyNoteVideoProps) {
   const { user, note, isAuthor, onDeleteClick } = props
+  const { self, peers, send, addPeerEventListener, removePeerEventListener } = useWebRTCContext()
   const { attachmentStates, updateNote, loadAttachment } = useDashboardNotesContext()
   const userId = user.id
   const noteId = note.id
@@ -47,12 +49,17 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
   const loadAttachmentRef = useRef(loadAttachment)
   const attachmentsRef = useRef(attachments)
   const videoAttachmentStateRef = useRef(videoAttachmentState)
+  const peersRef = useRef(peers)
+  const selfRef = useRef(self)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [thumbnailData, setThumbnailData] = useState<ArrayBuffer | null>(null)
+  const noteAuthorId = note.author.id
 
   loadAttachmentRef.current = loadAttachment
   attachmentsRef.current = attachments
   videoAttachmentStateRef.current = videoAttachmentState
+  peersRef.current = peers
+  selfRef.current = self
 
   const handleRecordClick = useCallback(() => {
     setIsRecordingRequested(true)
@@ -128,9 +135,31 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       return
     }
 
-    void video.play()
-    setIsPlaying(true)
-  }, [videoAttachmentId])
+    if (videoAttachmentState?.status === 'local') {
+      void video.play()
+      setIsPlaying(true)
+    } else if (videoAttachmentState?.status === 'placeholder') {
+      const peer = peersRef.current.find(p => p.participant.user.id === noteAuthorId)
+
+
+      if (peer?.connection) {
+        const connection = peer.connection
+        console.log('requestedvideo.play', peer)
+
+        connection.ontrack = event => {
+          console.log('requestedvideo.ontrack', event)
+          connection.ontrack = null
+          video.srcObject = event.streams[0]
+          void video.play()
+        }
+
+        send(peer.connectionId, {
+          event: `requestedvideo:${noteId}`,
+          payload: {},
+        })
+      }
+    }
+  }, [noteId, noteAuthorId, videoAttachmentId, videoAttachmentState?.status])
 
   const handlePauseClick = useCallback(() => {
     const video = playerVideoRef.current
@@ -255,6 +284,29 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       return
     }
 
+    function onRequestedVideo(event: PeerEvent) {
+      console.log('requestedvideo.received', event)
+      const peer = peersRef.current.find(p => p.connectionId === event.peerId) as Peer
+
+      console.log('requestedvideo.peer', peer)
+
+      if (peer?.connection && ('captureStream' in streamer || 'mozCaptureStream' in streamer)) {
+        const connection = peer.connection
+        const captureStream = streamer['captureStream'] || streamer['mozCaptureStream']
+        streamer.play().then(() => {
+          const stream = captureStream.call(streamer)
+
+          console.log('requestedvideo.listening')
+          console.log('streamer.rcs', stream)
+
+          stream.getTracks().forEach(track => {
+            connection.addTrack(track, stream)
+            console.log('requestedvideo.added', track, stream)
+          })
+        })
+      }
+    }
+
     const thumbnailContext = thumbnailCanvas.getContext('2d')
     streamer.src = player.src
     console.log('streamer.src', streamer.src, videoUrl)
@@ -267,6 +319,8 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
     streamer.onloadeddata = () => {
       streamer.onloadeddata = null
       streamer.oncanplay = () => {
+        addPeerEventListener(`requestedvideo:${noteId}`, onRequestedVideo)
+
         streamer.oncanplay = null
         streamer.currentTime = 1;
         streamer.onseeked = () => {
@@ -284,7 +338,11 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
         }
       }
     }
-  }, [videoUrl, updateNote])
+
+    return () => {
+      removePeerEventListener(`requestedvideo:${noteId}`, onRequestedVideo)
+    }
+  }, [noteId, videoUrl, updateNote])
 
   useEffect(() => {
     if (!thumbnailData) {
