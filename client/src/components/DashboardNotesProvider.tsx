@@ -125,7 +125,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
                 error: null,
                 partialContent: null,
                 content: null,
-                ...(existingAttachment ?? {}),
+                ...(existingAttachment ?? {}) as any,
                 status: existingAttachment?.status ?? (isRemote ? 'placeholder' : 'local'),
               }
             })
@@ -204,11 +204,11 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   }, [broadcast])
 
   const removeNote = useCallback((id: string) => {
-    const node = notesRef.current.find(n => n.id === id)
+    const note = notesRef.current.find(n => n.id === id)
     setNotes(notes => notes.filter(n => n.id !== id))
 
-    if (node.attachments?.length) {
-      removeAttachments(node.attachments.map(a => a.id))
+    if (note?.attachments?.length) {
+      removeAttachments(note.attachments.map(a => a.id))
     }
 
     broadcast({
@@ -240,17 +240,17 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
     syncAttachments(note, true)
   }, [syncAttachments])
 
-  const receiveUpdatedNote = useCallback((note: Note) => {
+  const receiveUpdatedNote = useCallback((note: UpdateNote) => {
     setNotes(notes => notes.map(n => n.id === note.id ? { ...n, ...note } : n))
     syncAttachments(note, true)
   }, [syncAttachments])
 
   const receiveRemovedNote = useCallback((id: string) => {
-    const node = notesRef.current.find(n => n.id === id)
+    const note = notesRef.current.find(n => n.id === id)
     setNotes(notes => notes.filter(n => n.id !== id))
 
-    if (node.attachments?.length) {
-      removeAttachments(node.attachments.map(a => a.id))
+    if (note?.attachments?.length) {
+      removeAttachments(note.attachments.map(a => a.id))
     }
   }, [syncAttachments])
 
@@ -261,7 +261,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
       download(attachmentState.attachment, attachmentState.content)
     } else if (attachmentState?.status === 'placeholder' || attachmentState?.status === 'failed') {
       const note = notesRef.current.find(note => note.id === noteId)
-      const attachmentConnectionId = peers.find(p => p.participant.user.id === note.author.id)?.connectionId
+      const attachmentConnectionId = peers.find(p => p.participant.user.id === note?.author.id)?.connectionId
       console.log('requesting download', noteId, note, attachmentConnectionId)
 
       if (attachmentConnectionId && note) {
@@ -420,7 +420,7 @@ function useNoteEventsHandler(
       } else {
         const peerId = event.peerId
         const chunkSize = 16384 // 16 KB
-        const base64 = arrayBufferToBase64(attachmentMetadata.content)
+        const base64 = arrayBufferToBase64(attachmentMetadata.content as ArrayBuffer)
 
         for (const { i, chunk, finished } of getChunks(base64, chunkSize)) {
           send(peerId, {

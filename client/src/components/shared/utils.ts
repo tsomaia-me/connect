@@ -86,7 +86,7 @@ export function getChunks(data: string, chunkSize: number) {
   return chunks
 }
 
-export function formatTime(seconds) {
+export function formatTime(seconds: number) {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);

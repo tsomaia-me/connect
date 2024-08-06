@@ -6,7 +6,7 @@ export interface PenColorPickerProps {
   onSelectColor: (color: string) => void
 }
 
-const colorMap = {
+const colorMap: Record<string, string> = {
   'bg-white': '#FFFFFF',
   'bg-red-500': '#EF4444',
   'bg-green-500': '#10B981',

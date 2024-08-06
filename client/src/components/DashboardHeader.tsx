@@ -25,7 +25,7 @@ export function DashboardHeader() {
           </ProfileCircle>
         ))}
         {additionalCount > 0 && (
-          <ProfileCircle className="bg-gray-800" style={{ zIndex: baseZIndex + displayedParticipants.length }}>
+          <ProfileCircle className="bg-gray-800" zIndex={baseZIndex + displayedParticipants.length}>
             +{additionalCount}
           </ProfileCircle>
         )}

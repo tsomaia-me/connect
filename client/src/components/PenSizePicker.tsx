@@ -6,7 +6,7 @@ export interface PenSizePickerProps {
   onSelectSize: (Size: number) => void
 }
 
-const SizeMap = {
+const SizeMap: Record<string, number> = {
   'thin': 2,
   'medium': 4,
   'thick': 6,
@@ -24,7 +24,7 @@ const thickIcon = (
   <div className="w-4 h-4 bg-white rounded-full"></div>
 )
 
-const sizes = {
+const sizes: Record<string, typeof thickIcon> = {
   thick: thickIcon,
   medium: mediumIcon,
   thin: thinIcon,

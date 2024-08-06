@@ -80,7 +80,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
         console.log('recording stopped')
         const recording = new Blob(recordedChunksRef.current, { type: 'video/webm' })
         const videoAttachmentState = videoAttachmentStateRef.current
-        let id
+        let id: string
 
         if (!videoAttachmentState) {
           id = generateId()
@@ -189,10 +189,10 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       return
     }
 
-    let mediaRecorder
+    let mediaRecorder: MediaRecorder
     let streamObj: MediaStream
     let startTime = NaN
-    let interval
+    let interval: any
     navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
       console.log('starting recording')
       video.srcObject = stream
@@ -237,8 +237,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       return
     }
 
-    console.log('hello')
-    let interval
+    let interval: any
     const url = URL.createObjectURL(videoAttachmentState.content)
     setVideoUrl(url)
     player.src = url
@@ -290,16 +289,16 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
       console.log('requestedvideo.peer', peer)
 
-      if (peer?.connection && ('captureStream' in streamer || 'mozCaptureStream' in streamer)) {
+      if (peer?.connection && streamer && ('captureStream' in (streamer as any) || 'mozCaptureStream' in (streamer as any))) {
         const connection = peer.connection
-        const captureStream = streamer['captureStream'] || streamer['mozCaptureStream']
+        const captureStream = (streamer as any)['captureStream'] || (streamer as any)['mozCaptureStream']
         streamer.play().then(() => {
           const stream = captureStream.call(streamer)
 
           console.log('requestedvideo.listening')
           console.log('streamer.rcs', stream)
 
-          stream.getTracks().forEach(track => {
+          stream.getTracks().forEach((track: MediaStreamTrack) => {
             connection.addTrack(track, stream)
             console.log('requestedvideo.added', track, stream)
           })
@@ -325,16 +324,18 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
         streamer.currentTime = 1;
         streamer.onseeked = () => {
           streamer.onseeked = null
-          thumbnailContext.drawImage(streamer, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
-          thumbnailCanvas.toBlob(thumbnailBlob => {
-            if (!thumbnailBlob) {
-              return
-            }
+          if (thumbnailContext && thumbnailCanvas) {
+            thumbnailContext.drawImage(streamer, 0, 0, thumbnailCanvas.width, thumbnailCanvas.height)
+            thumbnailCanvas.toBlob(thumbnailBlob => {
+              if (!thumbnailBlob) {
+                return
+              }
 
-            readAsArrayBuffer(thumbnailBlob).then(buffer => {
-              setThumbnailData(buffer)
+              readAsArrayBuffer(thumbnailBlob).then(buffer => {
+                setThumbnailData(buffer)
+              })
             })
-          })
+          }
         }
       }
     }
