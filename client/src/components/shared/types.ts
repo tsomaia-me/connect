@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, DetailedHTMLProps } from 'react'
+import { User } from '@/app.models'
 
 export interface FieldParams<T extends string | number | null> {
   value: T
@@ -34,3 +35,18 @@ export interface Attachment {
   type: string
   size: number
 }
+
+export interface Note {
+  type: 'text' | 'video' | 'audio'
+  id: string
+  isDraft: boolean
+  width: number
+  height: number
+  relativePoint: Point
+  content: string
+  mode: 'edit' | 'view'
+  author: User
+  attachments: Attachment[]
+}
+
+export type UpdateNote = Partial<Note> & { id: string }

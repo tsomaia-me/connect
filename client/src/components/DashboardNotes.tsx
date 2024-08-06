@@ -1,32 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import classNames from 'classnames'
-import {
-  arrayBufferToBase64, base64ToArrayBuffer,
-  downloadAttachment,
-  generateId,
-  getChunks,
-  getRelativePoint
-} from '@/components/shared/utils'
-import { Attachment, Box, Point } from '@/components/shared/types'
-import { Note, StickyNote } from '@/components/StickyNote'
+import { arrayBufferToBase64, base64ToArrayBuffer, download, getChunks } from '@/components/shared/utils'
+import { Attachment, Box, Note, Point } from '@/components/shared/types'
+import { StickyNote } from '@/components/StickyNote'
 import {
   PeerEvent,
   useAddPeerEventListener,
   useBroadcaster,
   useRemovePeerEventListener,
-  useRoom, useSelf,
+  useRoom,
+  useSelf,
   useSender,
 } from '@/components/WebRTCProvider'
 import { Room, User } from '@/app.models'
+import { useDashboardNotesContext } from '@/components/DashboardNotesProvider'
 
 export interface DashboardNotesProps {
   isActive: boolean
   controlPosition: Point
-  onNoteCreated: () => void
 }
 
 export function DashboardNotes(props: DashboardNotesProps) {
-  const { isActive, controlPosition, onNoteCreated } = props
+  const { isActive, controlPosition } = props
+  const { notes } = useDashboardNotesContext()
   const self = useSelf()
   const room = useRoom()
   const send = useSender()
@@ -50,11 +46,6 @@ export function DashboardNotes(props: DashboardNotesProps) {
     content: ArrayBuffer | null
   }>>(new Map())
   const notesRef = useRef<Note[]>([])
-  const [notes, setNotes] = useState<Note[]>([])
-  const box: Box = {
-    width: boardRef.current?.offsetWidth ?? 0,
-    height: boardRef.current?.offsetHeight ?? 0,
-  }
 
   userRef.current = self.user
   sendRef.current = send
@@ -65,7 +56,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
 
   const handleNoteChange = useCallback((note: Note, updateOnlyPeers = false) => {
     if (!updateOnlyPeers) {
-      setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+      // setNotes(notes => notes.map(n => n.id === note.id ? note : n))
       note.attachments.forEach(attachment => {
         attachmentsRef.current.set(attachment.id, {
           attachment,
@@ -86,7 +77,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
   }, [broadcast])
 
   const handleNoteDelete = useCallback((noteId: string) => {
-    setNotes(notes => notes.filter(n => n.id !== noteId))
+    // setNotes(notes => notes.filter(n => n.id !== noteId))
     broadcast({
       event: 'notedeleted',
       payload: {
@@ -99,7 +90,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
     const attachmentMetadata = attachmentsRef.current.get(attachmentId)
 
     if (attachmentMetadata?.content) {
-      downloadAttachment(attachmentMetadata.attachment, attachmentMetadata.content)
+      download(attachmentMetadata.attachment, attachmentMetadata.content)
     } else if (attachmentMetadata?.status === 'placeholder' || attachmentMetadata?.status === 'failed') {
       const note = notesRef.current.find(note => note.id === noteId)
       console.log('requesting download', noteId, note, notesRef.current)
@@ -134,6 +125,8 @@ export function DashboardNotes(props: DashboardNotesProps) {
   }, [isActive])
 
   useEffect(() => {
+    return
+
     function onPeerJoined(event: PeerEvent) {
       if (notesRef.current.length > 0) {
         console.log('sending notes to new peer:', roomRef.current.participants.find(p => p.user.id === event.peerId)?.user.username, notesRef.current)
@@ -149,18 +142,18 @@ export function DashboardNotes(props: DashboardNotesProps) {
 
     function onNotes(event: PeerEvent) {
       const notes = event.payload.notes as Note[]
-      setNotes(notes)
+      // setNotes(notes)
     }
 
     function onNoteCreated(event: PeerEvent) {
       console.log('note created', event)
-      setNotes(existingNotes => [...existingNotes, event.payload.note as Note])
+      // setNotes(existingNotes => [...existingNotes, event.payload.note as Note])
     }
 
     function onNoteUpdated(event: PeerEvent) {
       console.log('note updated', event)
       const note = event.payload.note as Note
-      setNotes(notes => notes.map(n => n.id === note.id ? note : n))
+      // setNotes(notes => notes.map(n => n.id === note.id ? note : n))
       note.attachments.forEach(attachment => {
         const existingMetadata = attachmentsRef.current.get(attachment.id)
         attachmentsRef.current.set(attachment.id, {
@@ -176,7 +169,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
     function onNoteDeleted(event: PeerEvent) {
       console.log('note deleted', event)
       const noteId = event.payload.noteId
-      setNotes(notes => notes.filter(n => n.id !== noteId))
+      // setNotes(notes => notes.filter(n => n.id !== noteId))
     }
 
     function onDownloadAttachment(event: PeerEvent) {
@@ -248,7 +241,7 @@ export function DashboardNotes(props: DashboardNotesProps) {
           partialContent: null,
           content: base64ToArrayBuffer(base64),
         })
-        downloadAttachment(attachmentMetadata.attachment, buffer)
+        download(attachmentMetadata.attachment, buffer)
       } else {
         attachmentsRef.current.set(attachmentId, {
           ...attachmentMetadata,
@@ -293,63 +286,6 @@ export function DashboardNotes(props: DashboardNotesProps) {
     }
   }, [addPeerEventListener, removePeerEventListener])
 
-  useEffect(() => {
-    if (mode !== 'create' || !newNoteRef.current || !boardRef.current) {
-      return
-    }
-
-    const boardEl = boardRef.current!
-    const newNoteEl = newNoteRef.current!
-    const user = userRef.current!
-    setPosition(controlPosition)
-
-    function setPosition([x, y]: Point) {
-      const left = x - (newNoteEl.offsetWidth / 2)
-      const top = y - (newNoteEl.offsetHeight / 2)
-      newNoteEl.style.left = `${left}px`
-      newNoteEl.style.top = `${top}px`
-    }
-
-    function onMouseMove(event: MouseEvent) {
-      setPosition([event.clientX, event.clientY])
-    }
-
-    function onBoardClick(event: MouseEvent) {
-      const note: Note = {
-        id: generateId(),
-        width: 256,
-        height: 224,
-        relativePoint: getRelativePoint([event.clientX, event.clientY] as Point, {
-          width: boardEl.offsetWidth,
-          height: boardEl.offsetHeight,
-        }),
-        content: '',
-        mode: 'edit',
-        author: { ...user },
-        attachments: [],
-      }
-      setNotes(existingNotes => [...existingNotes, note])
-      setMode('view')
-      onNoteCreated()
-      broadcastRef.current({
-        event: 'notecreated',
-        payload: {
-          note,
-        },
-      })
-    }
-
-    window.addEventListener('mousemove', onMouseMove)
-    boardEl.addEventListener('click', onBoardClick, {
-      once: true
-    })
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('click', onBoardClick)
-    }
-  }, [mode, controlPosition, onNoteCreated])
-
   return (
     <div
       ref={boardRef}
@@ -370,7 +306,6 @@ export function DashboardNotes(props: DashboardNotesProps) {
         <StickyNote
           key={note.id}
           user={self.user}
-          box={box}
           note={note}
           onNoteChange={handleNoteChange}
           onNoteDelete={handleNoteDelete}

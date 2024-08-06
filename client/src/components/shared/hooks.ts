@@ -34,7 +34,7 @@ export function useField<T extends string | number | null>(initialValue: T): Fie
   } as FieldParams<T>
 }
 
-export function useSignalerSender(): <T>(message: string, payload: unknown) => void {
+export function useSignalSender(): <T>(message: string, payload: unknown) => void {
   const socket = useSignaler()
 
   return useCallback(async (message: string, payload: unknown) => {

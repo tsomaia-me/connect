@@ -11,9 +11,13 @@ export function Dashboard() {
     setSelectedControl(control)
     setControlPosition([event.nativeEvent.clientX, event.nativeEvent.clientY])
   }, [])
-  const handleNoteCreated = useCallback(() => {
-    setSelectedControl(null)
-  }, [])
+
+  // useEffect(() => {
+  //   navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+  //     .then(() => {
+  //
+  //     })
+  // }, [])
 
   return (
     <div className="flex flex-row justify-center items-center h-full dark:bg-gray-900 relative overflow-hidden">
@@ -21,7 +25,6 @@ export function Dashboard() {
       <DashboardNotes
         isActive={selectedControl === 'note'}
         controlPosition={controlPosition}
-        onNoteCreated={handleNoteCreated}
       />
       <DashboardControls
         selectedControl={selectedControl}

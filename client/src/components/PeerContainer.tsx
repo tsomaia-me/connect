@@ -1,6 +1,6 @@
 import { OfferSignal, Participant, SignalEvent } from '@/app.models'
 import { useEffect, useRef } from 'react'
-import { useSignalerSender } from '@/components/shared/hooks'
+import { useSignalSender } from '@/components/shared/hooks'
 import { Peer, PeerEvent, useWebRTCContext } from '@/components/WebRTCProvider'
 import { useSignaler } from '@/components/SocketProvider'
 
@@ -12,7 +12,7 @@ export interface PeerContainerProps {
 export function PeerContainer(props: PeerContainerProps) {
   const { self, peer } = props
   const socket = useSignaler()
-  const sendSignal = useSignalerSender()
+  const sendSignal = useSignalSender()
   const { iceServers, updatePeer, removePeer } = useWebRTCContext()
   const iceServersRef = useRef<RTCIceServer[]>(iceServers)
   const isInitiatorRef = useRef<boolean>(peer.isInitiator)

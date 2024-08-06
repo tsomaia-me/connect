@@ -29,7 +29,7 @@ export function getFormattedFileSize(size: number) {
   return `${size.toFixed(2)} ${units[unitIndex]}`
 }
 
-export function downloadAttachment(attachment: Attachment, content: ArrayBuffer) {
+export function download(attachment: Attachment, content: ArrayBuffer) {
   const a = document.createElement('a')
   const blob = new Blob([content], { type: attachment.type })
   a.href = URL.createObjectURL(blob)

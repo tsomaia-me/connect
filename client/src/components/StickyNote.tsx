@@ -1,59 +1,63 @@
 import { generateId, getAbsolutePoint, getFormattedFileSize, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
-import { Attachment, Box, Point } from '@/components/shared/types'
-import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { Box, Note, Point } from '@/components/shared/types'
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
 import { Bin } from '@/components/icons/Bin'
 import { Paperclip } from '@/components/icons/Paperclip'
 import { Download } from '@/components/icons/Download'
+import { useDashboardNotesContext } from '@/components/DashboardNotesProvider'
+import { useSelf } from '@/components/WebRTCProvider'
 
 export interface StickyNoteProps {
   user: User
-  box: Box
   note: Note
-  onNoteChange: (note: Note, updateOnlyPeers?: boolean) => void
-  onNoteDelete: (noteId: string) => void
-  onAttachmentLoaded: (attachmentId: string, content: ArrayBuffer) => void
-  onDownloadAttachment: (noteId: string, attachmentId: string) => void
-}
-
-export interface Note {
-  id: string
-  width: number
-  height: number
-  relativePoint: Point
-  content: string
-  mode: 'edit' | 'view'
-  author: User
-  attachments: Attachment[]
 }
 
 export function StickyNote(props: StickyNoteProps) {
-  const { user, box, note, onNoteChange, onNoteDelete, onAttachmentLoaded, onDownloadAttachment } = props
+  const { user, note } = props
+  const { containerSize, updateNote, removeNote, downloadAttachment, loadAttachment } = useDashboardNotesContext()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const [isMoving, setIsMoving] = useState(false)
-  const noteRef = useRef<Note>(note)
-  const noteElRef = useRef<HTMLDivElement | null>(null)
   const moveHandleRef = useRef<HTMLButtonElement | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const noteRef = useRef<Note>(note)
+  const relativePoint = note.relativePoint
+  const userId = user.id
+  const noteId = note.id
+  const noteAuthorId = note.author.id
+  const isAuthor = userId === noteAuthorId
+  const noteAttachments = note.attachments
 
   noteRef.current = note
 
+  const notePosition = useMemo(() => {
+    const absolutePoint = getAbsolutePoint(note.relativePoint, containerSize)
+    const left = absolutePoint[0] - (note.width / 2)
+    const top = absolutePoint[1] - 40
+
+    return { left, top }
+  }, [relativePoint, containerSize])
+
+  const enableMoving = useNoteMoveHandler(note, () => {
+    if (noteRef.current.isDraft && textareaRef.current) {
+      textareaRef.current!.focus()
+    }
+  })
+
   const handleMoveDown = useCallback(() => {
-    if (user.id !== note.author.id) {
-      return
+    if (isAuthor) {
+      enableMoving()
     }
+  }, [isAuthor, enableMoving])
 
-    setIsMoving(true)
-  }, [user, note])
   const handleNoteContentChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (user.id !== note.author.id) {
+    if (isAuthor) {
       return
     }
 
-    onNoteChange({
-      ...note,
+    updateNote({
+      id: noteId,
       content: (event.nativeEvent.target as HTMLTextAreaElement).value,
     })
 
@@ -65,101 +69,66 @@ export function StickyNote(props: StickyNoteProps) {
         textarea.style.height = `${scrollHeight}px`
       }
     }
-  }, [user, note, onNoteChange])
+  }, [isAuthor, noteId, updateNote])
+
   const handleNoteDelete = useCallback(() => {
-    if (user.id === note.author.id) {
-      onNoteDelete(note.id)
+    if (isAuthor) {
+      removeNote(note.id)
     }
-  }, [user, note, onNoteDelete])
-  const handleNoteFocus = useCallback(() => {
-    onNoteChange({
-      ...note,
-      mode: 'edit',
-    })
-  }, [note, onNoteChange])
-  const handleNoteBlur = useCallback(() => {
-    onNoteChange({
-      ...note,
-      mode: 'view',
-    })
-  }, [note, onNoteChange])
+  }, [isAuthor, note, removeNote])
+
   const handleAttachClick = useCallback(() => {
-    if (fileRef.current) {
+    if (isAuthor && fileRef.current) {
       fileRef.current!.click()
     }
-  }, [])
+  }, [isAuthor])
+
   const handleDownloadAttachmentClick = useCallback((attachmentId: string) => {
-    onDownloadAttachment(note.id, attachmentId)
-  }, [note, onDownloadAttachment])
+    downloadAttachment(noteId, attachmentId)
+  }, [noteId, downloadAttachment])
 
-  useEffect(() => {
-    if (!isMoving && user.id === note.author.id && note.mode === 'edit' && textareaRef.current) {
-      textareaRef.current!.focus()
-    }
-  }, [isMoving, user, note.mode])
+  const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = (event.target as HTMLInputElement)?.files?.[0]
+    const id = generateId()
 
-  useEffect(() => {
-    if (!isMoving || !noteElRef.current) {
-      return
-    }
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Max file size is 10 MB')
+        return
+      }
 
-    const noteEl = noteElRef.current!
-
-    function getPosition([x, y]: Point): Point {
-      const left = x - (noteEl.offsetWidth / 2)
-      const top = y - (moveHandleRef.current!.offsetTop + (moveHandleRef.current!.offsetHeight / 2))
-
-      return [left, top] as Point
-    }
-
-    function setPosition([x, y]: Point) {
-      const [left, top] = getPosition([x, y] as Point)
-      noteEl.style.left = `${left}px`
-      noteEl.style.top = `${top}px`
-    }
-
-    function onMouseMove(event: MouseEvent) {
-      const point = [event.clientX, event.clientY] as Point
-      const [left, top] = getPosition(point)
-      setPosition(point)
-      onNoteChange({
-        ...noteRef.current,
-        relativePoint: getRelativePoint([left, top] as Point, box),
-      }, true)
-    }
-
-    function onMouseUp(event: MouseEvent) {
-      const point = [event.clientX, event.clientY] as Point
-      const [left, top] = getPosition(point)
-      setIsMoving(false)
-      setPosition(point)
-      onNoteChange({
-        ...noteRef.current,
-        relativePoint: getRelativePoint([left, top] as Point, box),
+      updateNote({
+        id: noteId,
+        attachments: [
+          ...noteAttachments,
+          {
+            id,
+            file,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          },
+        ],
       })
-    }
 
-    window.addEventListener('mousemove', onMouseMove)
-    window.addEventListener('mouseup', onMouseUp)
-
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseup', onMouseUp)
+      const fileReader = new FileReader()
+      fileReader.onload = event => {
+        if (event.target) {
+          loadAttachment(id, event.target!.result as ArrayBuffer)
+        }
+      }
+      fileReader.readAsArrayBuffer(file)
     }
-  }, [isMoving])
+  }, [noteId, noteAttachments, updateNote, loadAttachment])
 
   return (
     <div
-      ref={noteElRef}
       className={
         classNames(
           'absolute bg-gray-600 border border-gray-700 rounded-2xl w-64 min-h-56 pointer-events-auto shadow-md',
         )
       }
-      style={{
-        left: getAbsolutePoint(note.relativePoint, box)[0] - (note.width / 2),
-        top: getAbsolutePoint(note.relativePoint, box)[1] - (note.height / 2),
-      }}
+      style={notePosition}
     >
       <div className="flex justify-center">
         <button
@@ -175,10 +144,8 @@ export function StickyNote(props: StickyNoteProps) {
         ref={textareaRef}
         className="bg-transparent w-full min-h-56 p-6 pt-2 focus:outline-none focus:ring-0 border-0 resize-none text-xl text-white overflow-hidden"
         value={note.content ?? ''}
-        readOnly={user.id !== note.author.id}
-        onFocus={handleNoteFocus}
+        readOnly={!isAuthor}
         onChange={handleNoteContentChange}
-        onBlur={handleNoteBlur}
       />
 
       <div className="mb-4 border-b border-gray-400">
@@ -226,40 +193,54 @@ export function StickyNote(props: StickyNoteProps) {
         ref={fileRef}
         type="file"
         className="hidden"
-        onChange={e => {
-          const file = (e.target as HTMLInputElement)?.files?.[0]
-          const id = generateId()
-
-          if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-              alert('Max file size is 10 MB')
-              return
-            }
-
-            onNoteChange({
-              ...note,
-              attachments: [
-                ...note.attachments,
-                {
-                  id,
-                  file,
-                  name: file.name,
-                  type: file.type,
-                  size: file.size,
-                },
-              ],
-            })
-
-            const fileReader = new FileReader()
-            fileReader.onload = event => {
-              if (event.target) {
-                onAttachmentLoaded(id, event.target!.result as ArrayBuffer)
-              }
-            }
-            fileReader.readAsArrayBuffer(file)
-          }
-        }}
+        onChange={handleFileChange}
       />
     </div>
   )
+}
+
+function useNoteMoveHandler(note: Note, onDrop: () => void) {
+  const self = useSelf()
+  const { containerSize, updateNote } = useDashboardNotesContext()
+  const [isMoving, setIsMoving] = useState(note.isDraft && note.author.id === self.user.id)
+  const noteId = note.id
+
+  useEffect(() => {
+    if (!isMoving) {
+      return
+    }
+
+    function onMouseMove(event: MouseEvent) {
+      const point = [event.clientX, event.clientY] as Point
+      updateNote({
+        id: noteId,
+        relativePoint: getRelativePoint(point, containerSize),
+      })
+    }
+
+    function onMouseUp(event: MouseEvent) {
+      const point = [event.clientX, event.clientY] as Point
+      setIsMoving(false)
+
+      setTimeout(() => {
+        updateNote({
+          id: noteId,
+          isDraft: false,
+          relativePoint: getRelativePoint(point, containerSize),
+        })
+      })
+
+      onDrop()
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [noteId, isMoving, updateNote, containerSize, onDrop])
+
+  return useCallback(() => setIsMoving(true), [])
 }

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Room, User } from '@/app.models'
-import { useSignalerSender, useRealtimeData } from '@/components/shared/hooks'
+import { useRealtimeData, useSignalSender } from '@/components/shared/hooks'
 import { WebRTCProvider } from '@/components/WebRTCProvider'
 import { Dashboard } from '@/components/Dashboard'
+import { DashboardNotesProvider } from '@/components/DashboardNotesProvider'
 
 export interface DataSubscriptionContainerProps {
   userKey: string
@@ -25,7 +26,7 @@ const ICE_SERVERS = [
 
 export function DataSubscriptionContainer(props: DataSubscriptionContainerProps) {
   const { userKey, roomKey } = props
-  const emit = useSignalerSender()
+  const emit = useSignalSender()
   const [user] = useRealtimeData<User>('user', userKey)
   const [room] = useRealtimeData<Room>('room', roomKey)
   const [isJoined, setIsJoined] = useState(false)
@@ -50,7 +51,9 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
           room={room}
           iceServers={ICE_SERVERS}
         >
-          <Dashboard/>
+          <DashboardNotesProvider>
+            <Dashboard/>
+          </DashboardNotesProvider>
         </WebRTCProvider>
       )}
     </>
