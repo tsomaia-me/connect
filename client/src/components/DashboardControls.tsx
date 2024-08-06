@@ -55,7 +55,7 @@ export function DashboardControls(props: DashboardControlsProps) {
   return (
     <div className="flex flex-col justify-center absolute right-0 h-full px-4">
       <div className="flex flex-col gap-4 justify-between items-center h-full py-24">
-        <div className="h-[200px] mb-4">
+        <div className="h-[170px] mb-4">
           <PenSizePicker
             isOpen={selectedControl === 'pen'}
             selectedSize={selectedSize}
