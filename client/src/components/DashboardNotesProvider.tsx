@@ -1,7 +1,7 @@
 import {
-  createContext,
+  createContext, Dispatch,
   MutableRefObject,
-  PropsWithChildren,
+  PropsWithChildren, SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -36,10 +36,11 @@ export interface AttachmentState {
 export interface NoteEventsHandlerProps {
   containerSize: Box
   notes: Note[]
+  attachmentStates: Record<string, AttachmentState>
   createNote: (note: Partial<Note>, initialPoint: Point) => void
   updateNote: (note: UpdateNote) => void
   removeNote: (id: string) => void
-  receiveExistingNotes: (notes: Note[]) => void
+  receiveExistingNotes: (notes: Note[], attachmentStates: Record<string, AttachmentState>) => void
   receiveNewNote: (note: Note) => void
   receiveUpdatedNote: (note: UpdateNote) => void
   receiveRemovedNote: (id: string) => void
@@ -50,13 +51,14 @@ export interface NoteEventsHandlerProps {
 const DashboardNotesContext = createContext<NoteEventsHandlerProps>({
   containerSize: { width: 0, height: 0 } as Box,
   notes: [] as Note[],
+  attachmentStates: {} as Record<string, AttachmentState>,
   createNote: (note: Partial<Note>, initialPoint: Point) => {
   },
   updateNote: (note: UpdateNote) => {
   },
   removeNote: (id: string) => {
   },
-  receiveExistingNotes: (notes: Note[]) => {
+  receiveExistingNotes: (notes: Note[], attachmentStates: Record<string, AttachmentState>) => {
   },
   receiveNewNote: (note: Note) => {
   },
@@ -81,39 +83,69 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   const [notes, setNotes] = useState<Note[]>([])
   const [notesContainer, setNotesContainer] = useState<HTMLDivElement | null>(null)
   const containerSize = useContainerSize(notesContainer)
-  const attachmentsRef = useRef<Record<string, AttachmentState>>({})
+  const [attachmentStates, setAttachmentStates] = useState<Record<string, AttachmentState>>({})
   const notesRef = useRef<Note[]>(notes)
 
   notesRef.current = notes
+
+  const updateAttachment = useCallback((attachmentId: string, map: (attachmentState: AttachmentState) => Partial<AttachmentState>) => {
+    setAttachmentStates(attachmentStates => {
+      const existingAttachmentState = attachmentStates[attachmentId]
+
+      if (!existingAttachmentState) {
+        return attachmentStates
+      }
+
+      return {
+        ...attachmentStates,
+        [existingAttachmentState.id]: {
+          ...existingAttachmentState,
+          ...map(existingAttachmentState),
+        }
+      } as Record<string, AttachmentState>
+    })
+  }, [])
 
   const syncAttachments = useCallback((note?: Note | UpdateNote, isRemote = false) => {
     const selectedNotes = note ? [note] : notesRef.current
 
     if (!note || note?.attachments?.length) {
-      for (const note of selectedNotes) {
-        const noteAttachments = note.attachments
+      setAttachmentStates(attachmentStates => {
+        const clonedAttachmentStates = { ... attachmentStates }
 
-        if (noteAttachments?.length) {
-          noteAttachments.forEach(attachment => {
-            const existingAttachment = attachmentsRef.current[attachment.id]
-            attachmentsRef.current[attachment.id] = {
-              id: attachment.id,
-              attachment,
-              status: existingAttachment?.status ?? (isRemote ? 'placeholder' : 'local'),
-              error: null,
-              partialContent: null,
-              content: null,
-            }
-          })
+        for (const note of selectedNotes) {
+          const noteAttachments = note.attachments
+
+          if (noteAttachments?.length) {
+            noteAttachments.forEach(attachment => {
+              const existingAttachment = clonedAttachmentStates[attachment.id]
+              clonedAttachmentStates[attachment.id] = {
+                id: attachment.id,
+                attachment,
+                status: existingAttachment?.status ?? (isRemote ? 'placeholder' : 'local'),
+                error: null,
+                partialContent: null,
+                content: null,
+              }
+            })
+          }
         }
-      }
+
+        return clonedAttachmentStates
+      })
     }
   }, [])
 
   const removeAttachments = useCallback((ids: string[]) => {
-    for (const id of ids) {
-      delete attachmentsRef.current[id]
-    }
+    setAttachmentStates(attachmentStates => {
+      const clonedAttachmentStates = { ... attachmentStates }
+
+      for (const id of ids) {
+        delete clonedAttachmentStates[id]
+      }
+
+      return clonedAttachmentStates
+    })
   }, [])
 
   const createNote = useCallback((draft: Partial<Note>, initialPoint: Point) => {
@@ -186,9 +218,18 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
     })
   }, [syncAttachments, broadcast])
 
-  const receiveExistingNotes = useCallback((notes: Note[]) => {
+  const receiveExistingNotes = useCallback((notes: Note[], attachmentStates: Record<string, AttachmentState>) => {
     setNotes(notes)
-    syncAttachments(undefined, true)
+    console.log('received attachmentStates', attachmentStates)
+    setAttachmentStates(
+      Object.keys(attachmentStates).reduce((red, key) => ({
+        ...red,
+        [key]: {
+          ...attachmentStates[key],
+          status: attachmentStates[key].status === 'local' ? 'placeholder' : attachmentStates[key].status,
+        },
+      }), {})
+    )
   }, [syncAttachments])
 
   const receiveNewNote = useCallback((note: Note) => {
@@ -213,7 +254,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   }, [syncAttachments])
 
   const downloadAttachment = useCallback((noteId: string, attachmentId: string) => {
-    const attachmentState = attachmentsRef.current[attachmentId]
+    const attachmentState = attachmentStates[attachmentId]
 
     if (attachmentState?.content) {
       download(attachmentState.attachment, attachmentState.content)
@@ -234,22 +275,28 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
     } else {
       alert('Attachment is not ready to download yet, please try again later')
     }
-  }, [peers, send])
+  }, [attachmentStates, peers, send])
 
   const loadAttachment = useCallback((attachmentId: string, content: ArrayBuffer) => {
-    const attachmentState = attachmentsRef.current[attachmentId]
+    setAttachmentStates(attachmentStates => {
+      const clonedAttachmentStates = attachmentStates
+      const attachmentState = attachmentStates[attachmentId]
 
-    if (attachmentState) {
-      attachmentsRef.current[attachmentId] = {
-        ...attachmentState,
-        content,
+      if (attachmentState) {
+        clonedAttachmentStates[attachmentId] = {
+          ...attachmentState,
+          content,
+        }
       }
-    }
+
+      return clonedAttachmentStates
+    })
   }, [])
 
   const contextValue = useMemo(() => ({
     containerSize,
     notes,
+    attachmentStates,
     createNote,
     updateNote,
     removeNote,
@@ -262,6 +309,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
   }), [
     containerSize,
     notes,
+    attachmentStates,
     createNote,
     updateNote,
     removeNote,
@@ -273,7 +321,7 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
     loadAttachment,
   ])
 
-  useNoteEventsHandler(contextValue, attachmentsRef)
+  useNoteEventsHandler(contextValue, attachmentStates, updateAttachment)
 
   return (
     <div ref={setNotesContainer} className="w-full h-full">
@@ -286,7 +334,8 @@ export function DashboardNotesProvider(props: DashboardNotesProviderProps) {
 
 function useNoteEventsHandler(
   context: NoteEventsHandlerProps,
-  attachmentsRef: MutableRefObject<Record<string, AttachmentState>>,
+  attachmentStates: Record<string, AttachmentState>,
+  updateAttachment: (attachmentId: string, map: (prev: AttachmentState) => Partial<AttachmentState>) => void,
 ) {
   const { send, addPeerEventListener, removePeerEventListener } = useWebRTCContext()
   const {
@@ -299,9 +348,11 @@ function useNoteEventsHandler(
   } = context
   const containerSizeRef = useRef(containerSize)
   const notesRef = useRef<Note[]>(notes)
+  const attachmentsRef = useRef(attachmentStates)
 
   containerSizeRef.current = containerSize
   notesRef.current = notes
+  attachmentsRef.current = attachmentStates
 
   useEffect(() => {
     function onPeerJoined(event: PeerEvent) {
@@ -310,6 +361,7 @@ function useNoteEventsHandler(
           event: 'notes',
           payload: {
             notes: notesRef.current,
+            attachmentStates: attachmentsRef.current,
           },
         })
       }
@@ -318,7 +370,8 @@ function useNoteEventsHandler(
     function onReceivedNotes(event: PeerEvent) {
       console.log('Receives notes')
       const notes = event.payload.notes as Note[]
-      receiveExistingNotes(notes)
+      const attachmentStates = event.payload.attachmentStates as Record<string, AttachmentState>
+      receiveExistingNotes(notes, attachmentStates)
     }
 
     function onNoteCreated(event: PeerEvent) {
@@ -391,44 +444,36 @@ function useNoteEventsHandler(
 
     function onReceiveAttachmentChunk(event: PeerEvent) {
       const { attachmentId, i, chunk, finished } = event.payload
-      const attachmentMetadata = attachmentsRef.current[attachmentId]
       console.log(`received chunk #${i}`)
 
-      if (!attachmentMetadata) {
-        return
-      }
-
       if (finished) {
-        const base64 = (attachmentMetadata.partialContent ?? '') + chunk
-        const buffer = base64ToArrayBuffer(base64)
-        attachmentsRef.current[attachmentId] = {
-          ...attachmentMetadata,
-          status: 'downloaded',
-          partialContent: null,
-          content: base64ToArrayBuffer(base64),
-        }
-        download(attachmentMetadata.attachment, buffer)
+        updateAttachment(attachmentId, state => {
+          const base64 = (state.partialContent ?? '') + chunk
+          const buffer = base64ToArrayBuffer(base64)
+          download(state.attachment, buffer)
+
+          return {
+            status: 'downloaded',
+            partialContent: null,
+            content: base64ToArrayBuffer(base64),
+          }
+        })
       } else {
-        attachmentsRef.current[attachmentId] = {
-          ...attachmentMetadata,
-          status: 'downloaded',
-          partialContent: (attachmentMetadata.partialContent ?? '') + chunk,
-        }
+        updateAttachment(attachmentId, state => ({
+          status: 'downloading',
+          partialContent: (state.partialContent ?? '') + chunk,
+        }))
       }
     }
 
     function onReceiveAttachmentError(event: PeerEvent) {
       const { attachmentId, error } = event.payload
-      const attachmentMetadata = attachmentsRef.current[attachmentId]
 
-      if (attachmentMetadata) {
-        attachmentsRef.current[attachmentId] = {
-          ...attachmentMetadata,
-          status: 'failed',
-          error,
-        }
-        alert(error)
-      }
+      updateAttachment(attachmentId, () => ({
+        status: 'failed',
+        error,
+      }))
+      alert(error)
     }
 
     addPeerEventListener('joined', onPeerJoined)
@@ -458,6 +503,7 @@ function useNoteEventsHandler(
     receiveNewNote,
     receiveUpdatedNote,
     receiveRemovedNote,
+    updateAttachment,
   ])
 }
 

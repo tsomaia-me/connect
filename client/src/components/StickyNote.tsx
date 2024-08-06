@@ -1,6 +1,6 @@
 import { generateId, getAbsolutePoint, getFormattedFileSize, getRelativePoint } from '@/components/shared/utils'
 import classNames from 'classnames'
-import { Box, Note, Point } from '@/components/shared/types'
+import { Note, Point } from '@/components/shared/types'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { User } from '@/app.models'
 import { HDots } from '@/components/icons/HDots'
@@ -17,7 +17,14 @@ export interface StickyNoteProps {
 
 export function StickyNote(props: StickyNoteProps) {
   const { user, note } = props
-  const { containerSize, updateNote, removeNote, downloadAttachment, loadAttachment } = useDashboardNotesContext()
+  const {
+    containerSize,
+    attachmentStates,
+    updateNote,
+    removeNote,
+    downloadAttachment,
+    loadAttachment
+  } = useDashboardNotesContext()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const moveHandleRef = useRef<HTMLButtonElement | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -28,8 +35,10 @@ export function StickyNote(props: StickyNoteProps) {
   const noteAuthorId = note.author.id
   const isAuthor = userId === noteAuthorId
   const noteAttachments = note.attachments
+  const loadAttachmentRef = useRef(loadAttachment)
 
   noteRef.current = note
+  loadAttachmentRef.current = loadAttachment
 
   const notePosition = useMemo(() => {
     const absolutePoint = getAbsolutePoint(note.relativePoint, containerSize)
@@ -114,12 +123,12 @@ export function StickyNote(props: StickyNoteProps) {
       const fileReader = new FileReader()
       fileReader.onload = event => {
         if (event.target) {
-          loadAttachment(id, event.target!.result as ArrayBuffer)
+          loadAttachmentRef.current(id, event.target!.result as ArrayBuffer)
         }
       }
       fileReader.readAsArrayBuffer(file)
     }
-  }, [noteId, noteAttachments, updateNote, loadAttachment])
+  }, [noteId, noteAttachments, updateNote])
 
   return (
     <div
@@ -158,7 +167,7 @@ export function StickyNote(props: StickyNoteProps) {
                 {getFormattedFileSize(attachment.size)}
               </div>
               <button onClick={() => handleDownloadAttachmentClick(attachment.id)}>
-                <Download/>
+                {attachmentStates[attachment.id]?.status === 'downloading' ? '...' : <Download/>}
               </button>
             </div>
           </div>
