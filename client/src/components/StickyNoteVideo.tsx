@@ -124,6 +124,14 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
     setIsPlaying(false)
   }, [attachmentId, loadAttachment])
 
+  const handleToggleClick = useCallback(() => {
+    if (isPlaying) {
+      handlePauseClick()
+    } else {
+      handlePlayClick()
+    }
+  }, [isPlaying, handlePlayClick, handlePauseClick])
+
   useEffect(() => {
     const video = recordingVideoRef.current
 
@@ -258,7 +266,7 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
       {attachmentState?.content && (
         <div
           className="flex flex-col w-full h-full flex-1 relative bg-black cursor-pointer"
-          onClick={handlePlayClick}
+          onClick={handleToggleClick}
         >
           {!isPlaying && (
             <div
@@ -279,9 +287,19 @@ export function StickyNoteVideo(props: StickyNoteVideoProps) {
 
       <div className="flex justify-between items-center p-2">
         <div className="pl-2 text-gray-400">
-          {(isRecordingRequested || isPlaying || isPaused)
-            ? formatTime(isRecordingRequested ? recordingDuration : recordingDuration - currentTime)
-            : `${note.author.username} / ${getFormattedFileSize(recordingSize)}`}
+          {(isRecordingRequested || isPlaying || isPaused) && formatTime(
+            isRecordingRequested
+              ? recordingDuration
+              : recordingDuration - currentTime
+          )}
+
+          {!isRecordingRequested && !isPlaying && !isPaused ? note.author.username : ''}
+
+          {isRecordingRequested && (' / ' + getFormattedFileSize(recordingSize))}
+
+          {(!isPlaying && !isPaused && attachmentState?.attachment) &&
+            ' / ' + getFormattedFileSize(attachmentState.attachment.size )
+          }
         </div>
 
         <div className="flex justify-end items-center gap-4">
