@@ -9,6 +9,7 @@ import { Paperclip } from '@/components/icons/Paperclip'
 import { Download } from '@/components/icons/Download'
 import { useDashboardNotesContext } from '@/components/DashboardNotesProvider'
 import { useSelf } from '@/components/WebRTCProvider'
+import { Spinner } from '@/components/icons/Spinner'
 
 export interface StickyNoteProps {
   user: User
@@ -167,7 +168,7 @@ export function StickyNote(props: StickyNoteProps) {
                 {getFormattedFileSize(attachment.size)}
               </div>
               <button onClick={() => handleDownloadAttachmentClick(attachment.id)}>
-                {attachmentStates[attachment.id]?.status === 'downloading' ? '...' : <Download/>}
+                {attachmentStates[attachment.id]?.status === 'downloading' ? <Spinner/> : <Download/>}
               </button>
             </div>
           </div>
