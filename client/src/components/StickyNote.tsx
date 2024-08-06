@@ -41,7 +41,7 @@ export function StickyNote(props: StickyNoteProps) {
   const notePosition = useMemo(() => {
     const absolutePoint = getAbsolutePoint(note.relativePoint, containerSize)
     const left = absolutePoint[0] - (note.width / 2)
-    const top = absolutePoint[1] - 40
+    const top = absolutePoint[1] - 20
 
     return { left, top }
   }, [relativePoint, containerSize])

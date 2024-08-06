@@ -5,13 +5,14 @@ import classNames from 'classnames'
 export interface InputProps extends DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement> {
   label?: string;
   placeholder?: string;
+  labelClassName?: string
 }
 
 export function Input(props: InputProps): ReactElement {
-  const { label, ...restProps } = props
+  const { label, labelClassName, ...restProps } = props
 
   return (
-    <label className="block">
+    <label className={classNames('block', labelClassName)}>
       <span className="block text-sm font-medium text-gray-900 dark:text-white">{label}</span>
       <input
         {...restProps}

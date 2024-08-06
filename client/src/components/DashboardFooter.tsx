@@ -3,19 +3,25 @@ import { usePeers, useRoomKey } from '@/components/WebRTCProvider'
 
 export function DashboardFooter() {
   const roomKey = useRoomKey()
-  const peers = usePeers()
 
   return (
     <div className="flex flex-col gap-4 text-white absolute bottom-0 p-4">
       <div className="flex items-center">
-        <Input className="w-72" value={roomKey} readOnly={true} onClick={async e => {
-          (e.target as HTMLInputElement).select()
-          await navigator.clipboard.writeText((e.target as HTMLInputElement).value)
-        }}/>
+        <div className="text-white font-bold whitespace-nowrap">Room Key</div>
+
+        <div className="w-96">
+          <Input
+            labelClassName="w-full ml-4"
+            className="tracking-widest text-lg text-center"
+            value={roomKey}
+            readOnly={true}
+            onClick={async e => {
+              (e.target as HTMLInputElement).select()
+              await navigator.clipboard.writeText((e.target as HTMLInputElement).value)
+            }}
+          />
+        </div>
       </div>
-      <p className="text-center">
-        {peers.length === 0 ? 'You are the only one in the room' : `There are ${peers.length + 1} people in the room`}
-      </p>
     </div>
   )
 }
