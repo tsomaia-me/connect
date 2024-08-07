@@ -50,8 +50,6 @@ export class AppGateway implements OnGatewayDisconnect {
       username,
     };
 
-    socket.emit('user', user);
-
     if (!room) {
       room = {
         id: uuid(),
@@ -80,6 +78,8 @@ export class AppGateway implements OnGatewayDisconnect {
       type: 'room',
       payload: room,
     });
+
+    socket.emit('user', user);
 
     console.log(user.key, room.participants.map(p => p.user.key))
 
