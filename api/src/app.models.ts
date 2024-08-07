@@ -52,6 +52,8 @@ export class Room {
 
   @IsArray()
   participants: Participant[]
+
+  updatedAt?: number
 }
 
 export class RealtimeRoomModel {

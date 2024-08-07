@@ -30,22 +30,30 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
   const { username, roomKey } = props
   const signaler = useSignaler()
   const emit = useSignalSender()
-  const [room] = useRealtimeData<Room>('room', roomKey)
+  const [room$] = useRealtimeData<Room>('room', roomKey)
   const [isJoined, setIsJoined] = useState(false)
   const isJoinRequestSentRef = useRef(false)
   const [user, setUser] = useState<User | null>(null)
+  const [room, setRoom] = useState<Room | null>(null)
 
   useEffect(() => {
     if (!isJoinRequestSentRef.current) {
-      signaler.on('user', user => {
+      signaler.on('joined', ({ user, room }) => {
         console.log('user', user)
         setUser(user)
+        setRoom(room)
         setIsJoined(true)
       })
       emit('join', { username, roomKey })
       console.log('[DataSubscriptionContainer] Joined room')
     }
   }, [username, roomKey, signaler, emit])
+
+  useEffect(() => {
+    if (room?.key === room$?.key) {
+      setRoom(room$)
+    }
+  }, [room, room$]);
 
   return (
     <>

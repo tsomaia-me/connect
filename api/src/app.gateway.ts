@@ -57,6 +57,7 @@ export class AppGateway implements OnGatewayDisconnect {
         name: '',
         hostKey: user.key,
         participants: [],
+        updatedAt: new Date().getTime(),
       };
       this.rooms[roomKey] = room;
     }
@@ -73,6 +74,7 @@ export class AppGateway implements OnGatewayDisconnect {
       user,
       connectionId: key,
     });
+    room.updatedAt = new Date().getTime()
 
     this.events$.next({
       type: 'room',
