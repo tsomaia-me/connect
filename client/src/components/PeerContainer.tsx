@@ -17,9 +17,13 @@ export function PeerContainer(props: PeerContainerProps) {
   const iceServersRef = useRef<RTCIceServer[]>(iceServers)
   const isInitiatorRef = useRef<boolean>(peer.isInitiator)
   const peerUsernameRef = useRef<string>(peer.participant.user.username)
+  const socketRef = useRef(socket)
+  const sendSignalRef = useRef(sendSignal)
   const peerConnectionId = peer.connectionId
 
   // let's make sure ref(s) stay in sync with updated props
+  socketRef.current = socket
+  sendSignalRef.current = sendSignal
   iceServersRef.current = iceServers
   isInitiatorRef.current = peer.isInitiator
   peerUsernameRef.current = peer.participant.user.username
@@ -43,7 +47,7 @@ export function PeerContainer(props: PeerContainerProps) {
     connection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
       if (event.candidate) {
         logMessage('Sending ICE candidate', event.candidate)
-        sendSignal('icecandidate', {
+        sendSignalRef.current('icecandidate', {
           senderId: self.connectionId,
           receiverId: peerConnectionId,
           payload: event.candidate,
@@ -71,11 +75,11 @@ export function PeerContainer(props: PeerContainerProps) {
       closeConnection()
     }
 
-    socket.on('offer', onOfferSignal)
+    socketRef.current.on('offer', onOfferSignal)
 
-    socket.on('answer', onAnswerSignal)
-    
-    socket.on('icecandidate', onIceCandidateSignal)
+    socketRef.current.on('answer', onAnswerSignal)
+
+    socketRef.current.on('icecandidate', onIceCandidateSignal)
 
     function onOfferSignal(event: SignalEvent<RTCSessionDescriptionInit>) {
       void receiveOffer(event.payload)
@@ -105,7 +109,7 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         const offer = await connection.createOffer()
         await connection.setLocalDescription(offer)
-        sendSignal('offer', {
+        sendSignalRef.current('offer', {
           senderId: self.connectionId,
           receiverId: peerConnectionId,
           payload: offer,
@@ -130,7 +134,7 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         const answer = await connection.createAnswer()
         await connection.setLocalDescription(answer)
-        sendSignal('answer', {
+        sendSignalRef.current('answer', {
           senderId: self.connectionId,
           receiverId: peerConnectionId,
           payload: answer,
@@ -197,9 +201,9 @@ export function PeerContainer(props: PeerContainerProps) {
     }
 
     return () => {
-      socket.off('offer', onOfferSignal)
-      socket.off('answer', onAnswerSignal)
-      socket.off('icecandidate', onIceCandidateSignal)
+      socketRef.current.off('offer', onOfferSignal)
+      socketRef.current.off('answer', onAnswerSignal)
+      socketRef.current.off('icecandidate', onIceCandidateSignal)
 
       connection.onicecandidate = null
       connection.oniceconnectionstatechange = null
