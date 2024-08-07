@@ -230,6 +230,12 @@ export function PeerContainer(props: PeerContainerProps) {
     }
 
     return () => {
+      updatePeer(peerConnectionIdRef.current, p => ({
+        ...p,
+        connection,
+        dataChannel,
+      }))
+
       socketRef.current.off('offer', onOfferSignal)
       socketRef.current.off('answer', onAnswerSignal)
       socketRef.current.off('icecandidate', onIceCandidateSignal)
