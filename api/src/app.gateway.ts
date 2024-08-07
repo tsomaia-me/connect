@@ -84,6 +84,8 @@ export class AppGateway implements OnGatewayDisconnect {
     socket.emit('user', user);
 
     for (const participant of room.participants) {
+      console.log('room.participants', room.participants)
+      console.log('rthis.connections', Array.from(this.connections.keys()))
       const connection = this.connections.get(participant.user.key)
       if (connection) {
         connection.socket.send('roomdata', room)
