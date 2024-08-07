@@ -65,10 +65,6 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
 
   return (
     <>
-      <p>{JSON.stringify(user)}</p>
-      <p>{JSON.stringify(room)}</p>
-      <p>{JSON.stringify(isJoined)}</p>
-      <p>{JSON.stringify(user && room && isJoined)}</p>
       {user && room && isJoined && (
         <WebRTCProvider
           user={user}
