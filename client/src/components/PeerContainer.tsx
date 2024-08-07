@@ -154,6 +154,10 @@ export function PeerContainer(props: PeerContainerProps) {
     }
 
     async function receiveAnswer(answer: RTCSessionDescriptionInit) {
+      if (connection.signalingState === 'stable') {
+        return
+      }
+
       try {
         console.log(`[${peerUsernameRef.current}][PeerContainer][receiveAnswer][before] set remote description`)
         await connection.setRemoteDescription(answer)
