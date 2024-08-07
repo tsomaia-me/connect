@@ -63,6 +63,10 @@ export class JoinRoomSignal {
   @IsString()
   roomKey: string
 
+  @IsString()
+  userKey: string
+
+  @IsString()
   username: string
 }
 

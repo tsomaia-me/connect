@@ -35,19 +35,19 @@ export default function HomePage() {
   }, [username, login])
 
   const joinRoom = useCallback(async () => {
-    const key = roomKey.value ?? uuid()
+    const key = roomKey.value || uuid()
 
     // if (isHttpError(room)) {
     //   setError(room.error)
     //   return
     // }
+    //
+    // const user = await getUser()
 
-    const user = await getUser()
-
-    if (user) {
-      router.push(`/user/${user.key}/room/${key}`)
+    if (username.value) {
+      router.push(`/user/${username.value}/room/${key}`)
     }
-  }, [roomKey, getUser])
+  }, [roomKey, username])
 
   // const handleCreateRoom = useCallback(async () => {
   //   const user = await getUser()

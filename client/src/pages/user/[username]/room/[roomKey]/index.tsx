@@ -10,9 +10,9 @@ export default function RoomPage() {
 
   return (
     <SocketProvider url={BASE_URL}>
-      {params?.userKey && params.roomKey && (
+      {params?.username && params.roomKey && (
         <DataSubscriptionContainer
-          userKey={params.userKey.toString()}
+          username={params.username.toString()}
           roomKey={params.roomKey.toString()}
         />
       )}
