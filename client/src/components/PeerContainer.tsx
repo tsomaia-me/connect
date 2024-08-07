@@ -19,7 +19,10 @@ export function PeerContainer(props: PeerContainerProps) {
   const peerUsernameRef = useRef<string>(peer.participant.user.username)
   const socketRef = useRef(socket)
   const sendSignalRef = useRef(sendSignal)
+  const selfConnectionId= self.connectionId
   const peerConnectionId = peer.connectionId
+  const selfConnectionIdRef = useRef<string>(selfConnectionId)
+  const peerConnectionIdRef = useRef<string>(peerConnectionId)
 
   // let's make sure ref(s) stay in sync with updated props
   socketRef.current = socket
@@ -27,6 +30,13 @@ export function PeerContainer(props: PeerContainerProps) {
   iceServersRef.current = iceServers
   isInitiatorRef.current = peer.isInitiator
   peerUsernameRef.current = peer.participant.user.username
+  selfConnectionIdRef.current = selfConnectionId
+  peerConnectionIdRef.current = peerConnectionId
+
+  useEffect(() => {
+    selfConnectionIdRef.current = selfConnectionId
+    peerConnectionIdRef.current = peerConnectionId
+  }, [selfConnectionId, peerConnectionId]);
 
   useEffect(() => {
     logMessage('useEffect() being called')
@@ -38,7 +48,7 @@ export function PeerContainer(props: PeerContainerProps) {
     })
     let iceCandidatesBuffer: RTCIceCandidate[] = []
 
-    updatePeer(peerConnectionId, p => ({
+    updatePeer(peerConnectionIdRef.current, p => ({
       ...p,
       connection,
       dataChannel,
@@ -48,8 +58,8 @@ export function PeerContainer(props: PeerContainerProps) {
       if (event.candidate) {
         logMessage('Sending ICE candidate', event.candidate)
         sendSignalRef.current('icecandidate', {
-          senderId: self.connectionId,
-          receiverId: peerConnectionId,
+          senderId: selfConnectionIdRef.current,
+          receiverId: peerConnectionIdRef.current,
           payload: event.candidate,
         })
       }
@@ -114,8 +124,8 @@ export function PeerContainer(props: PeerContainerProps) {
         await connection.setLocalDescription(offer)
         console.log(`[${peerUsernameRef.current}][PeerContainer][sendOffer][after] set local description`, offer)
         sendSignalRef.current('offer', {
-          senderId: self.connectionId,
-          receiverId: peerConnectionId,
+          senderId: selfConnectionIdRef.current,
+          receiverId: peerConnectionIdRef.current,
           payload: offer,
         })
         logMessage('An offer sent')
@@ -140,11 +150,13 @@ export function PeerContainer(props: PeerContainerProps) {
         console.log(`[${peerUsernameRef.current}][PeerContainer][sendAnswer][before] create answer`)
         const answer = await connection.createAnswer()
         console.log(`[${peerUsernameRef.current}][PeerContainer][sendAnswer][after] create answer`, answer)
+        console.log(`[${peerUsernameRef.current}][PeerContainer][sendAnswer][before] set local description`, answer)
         await connection.setLocalDescription(answer)
+        console.log(`[${peerUsernameRef.current}][PeerContainer][sendAnswer][after] set local description`, answer)
         await addBufferedIceCandidates()
         sendSignalRef.current('answer', {
-          senderId: self.connectionId,
-          receiverId: peerConnectionId,
+          senderId: selfConnectionIdRef.current,
+          receiverId: peerConnectionIdRef.current,
           payload: answer,
         })
         logMessage('An answer sent')
