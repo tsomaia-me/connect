@@ -107,8 +107,12 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function sendOffer() {
       try {
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] create offer`)
         const offer = await connection.createOffer()
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][after] create offer`, offer)
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] set local description`, offer)
         await connection.setLocalDescription(offer)
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][after] set local description`, offer)
         sendSignalRef.current('offer', {
           senderId: self.connectionId,
           receiverId: peerConnectionId,
@@ -122,7 +126,9 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function receiveOffer(offer: RTCSessionDescriptionInit) {
       try {
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] set remote description`, offer)
         await connection.setRemoteDescription(offer)
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][after] set remote description`, offer)
         logMessage('An offer received')
       } catch (error) {
         logError('Failed to receive an answer', error)
@@ -131,7 +137,9 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function sendAnswer() {
       try {
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] create answer`)
         const answer = await connection.createAnswer()
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][after] create answer`, answer)
         await connection.setLocalDescription(answer)
         await addBufferedIceCandidates()
         sendSignalRef.current('answer', {
@@ -147,7 +155,9 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function receiveAnswer(answer: RTCSessionDescriptionInit) {
       try {
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] set remote description`)
         await connection.setRemoteDescription(answer)
+        console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] set remove description`, answer)
         await addBufferedIceCandidates()
         logMessage('An answer received')
       } catch (error) {
@@ -159,7 +169,9 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         if (connection.localDescription && connection.remoteDescription) {
           logMessage('Adding ICE candidate', candidate)
+          console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] add ICE candidate`, candidate)
           await connection.addIceCandidate(candidate)
+          console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][after] add ICE candidate`)
         } else {
           logMessage('Buffering ICE candidate', candidate)
           iceCandidatesBuffer.push(candidate)
@@ -193,6 +205,7 @@ export function PeerContainer(props: PeerContainerProps) {
       sendOffer().then(() => {
         connection.onnegotiationneeded = () => {
           logMessage('Negotiation needed')
+          console.debug(`[${peerUsernameRef.current}][PeerContainer][debug][before] negotiation needed`)
           void sendOffer()
         }
       })
