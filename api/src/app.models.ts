@@ -63,8 +63,7 @@ export class JoinRoomSignal {
   @IsString()
   roomKey: string
 
-  @IsString()
-  userKey: string
+  username: string
 }
 
 export class OfferSignal {

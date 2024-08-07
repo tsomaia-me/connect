@@ -9,14 +9,15 @@ import { Socket } from 'socket.io'
 import { v4 as uuid } from 'uuid'
 import { UserService } from './user.service'
 import { RoomService } from './room.service'
-import { JoinRoomSignal, OfferSignal, User } from './app.models'
+import { JoinRoomSignal, OfferSignal, Room, User } from './app.models';
 import { RoomEvent, SocketEvent, UserEvent } from './app.types'
 import { toProtectedSerializedRoom, toProtectedSerializedUser } from './app.serializers'
 import { filter, map, startWith, Subject } from 'rxjs'
-import { toSocketErrorResponse, toSocketEvent, toSocketSuccessResponse } from './app.utils'
+import { toSocketEvent, toSocketSuccessResponse } from './app.utils'
 
 @WebSocketGateway({ cors: true })
 export class AppGateway implements OnGatewayDisconnect {
+  private rooms: Record<string, Room> = {}
   private connections = new Map<string, { user: User, socket: Socket }>()
   private events$ = new Subject<SocketEvent>()
 
@@ -59,33 +60,43 @@ export class AppGateway implements OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: JoinRoomSignal,
   ) {
-    const user = await this.userService.findByKey(data.userKey)
-    const room = await this.roomService.findByKey(data.roomKey)
-
-    if (!user) {
-      return toSocketErrorResponse(404, `Invalid user key: ${data.userKey}`)
+    const username = data.username
+    const roomKey = data.roomKey
+    let room = this.rooms[roomKey]
+    const key = uuid()
+    const user = {
+      id: key,
+      key: key,
+      username,
     }
 
     if (!room) {
-      return toSocketErrorResponse(404, `Invalid room key: ${data.roomKey}`)
+      room = {
+        id: uuid(),
+        key: uuid(),
+        name: '',
+        hostKey: user.key,
+        participants: [],
+      }
+      this.rooms[roomKey] = room
     }
 
-    console.log(user.username, 'joining a room', room.id, room.name)
+    console.log(username, 'joining a room', room.id, room.name)
 
-    const connectionId = `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`
-    this.connections.set(connectionId, {
+    // const connectionId = `${uuid()}_${Date.now()}_${Math.floor(Math.random() * 1000000000)}`
+    this.connections.set(key, {
       user,
       socket,
     })
 
-    const updatedRoom = await this.roomService.updateByKey(room.key, builder => builder.withParticipant({
+    room.participants.push({
       user,
-      connectionId,
-    }))
+      connectionId: key,
+    })
 
     this.events$.next({
       type: 'room',
-      payload: updatedRoom,
+      payload: room,
     })
 
     return toSocketSuccessResponse('joined')
@@ -132,13 +143,13 @@ export class AppGateway implements OnGatewayDisconnect {
           break
         }
 
-        await this.roomService.updateWhere(
-          builder => builder.withoutParticipant({
-            connectionId: '',
-            user,
-          }),
-          room => room.participants.map(participant => participant.user.id).includes(user.id)
-        )
+        for (const roomKey of Object.keys(this.rooms)) {
+          const room = this.rooms[roomKey]!
+
+          if (room.participants.map(participant => participant.user.id).includes(user.id)) {
+            room.participants = room.participants.filter(p => p.user.id === user.id)
+          }
+        }
 
         this.connections.delete(id)
 
