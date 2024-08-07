@@ -38,7 +38,7 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
 
   useEffect(() => {
     if (!isJoinRequestSentRef.current) {
-      signaler.on('joined', user => {
+      signaler.on('user', user => {
         console.log('user', user)
         setUser(user)
         setIsJoined(true)
@@ -50,7 +50,7 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
 
   useEffect(() => {
     signaler.on('roomdata', room => {
-      console.log('room', room)
+      console.log('room', room, roomKey)
       if (room?.key === roomKey) {
         setRoom(room)
       }

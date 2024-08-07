@@ -52,8 +52,8 @@ export class AppGateway implements OnGatewayDisconnect {
 
     if (!room) {
       room = {
-        id: uuid(),
-        key: uuid(),
+        id: roomKey,
+        key: roomKey,
         name: '',
         hostKey: user.key,
         participants: [],
