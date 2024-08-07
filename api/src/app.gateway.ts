@@ -118,25 +118,18 @@ export class AppGateway implements OnGatewayDisconnect {
 
   async handleDisconnect(socket: Socket) {
     for (const [id, connection] of this.connections.entries()) {
-      if (socket===connection.socket) {
-        const user = await this.userService.findById(connection.user.id);
-
-        if (!user) {
-          console.log('unknown client disconnected');
-          break;
-        }
-
+      if (socket === connection.socket) {
         for (const roomKey of Object.keys(this.rooms)) {
           const room = this.rooms[roomKey]!;
 
-          if (room.participants.map(participant => participant.user.id).includes(user.id)) {
-            room.participants = room.participants.filter(p => p.user.id===user.id);
+          if (room.participants.map(participant => participant.user.id).includes(id)) {
+            room.participants = room.participants.filter(p => p.user.id === id);
           }
         }
 
         this.connections.delete(id);
 
-        console.log('client disconnected', user.username);
+        console.log('client disconnected', id);
       }
     }
   }
