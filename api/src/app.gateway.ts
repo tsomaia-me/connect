@@ -81,7 +81,7 @@ export class AppGateway implements OnGatewayDisconnect {
       payload: room,
     });
 
-    console.log(user.key, room.key)
+    console.log(user.key, room.participants.map(p => p.user.key))
 
     return toSocketSuccessResponse('joined');
   }
