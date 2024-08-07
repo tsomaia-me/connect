@@ -50,8 +50,8 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
 
   useEffect(() => {
     signaler.on('roomdata', room => {
+      console.log('room', room)
       if (room?.key === roomKey) {
-        console.log('room', room)
         setRoom(room)
       }
     })
