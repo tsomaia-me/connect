@@ -177,8 +177,6 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
 
   return (
     <WebRTCContext.Provider value={contextValue}>
-      <p>room: {JSON.stringify(room)}</p>
-      peer: {JSON.stringify(peers.map(p => p.participant))}
       {peers.map(peer => (
         <PeerContainer
           key={peer.connectionId}
