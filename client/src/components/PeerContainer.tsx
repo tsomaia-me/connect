@@ -50,6 +50,8 @@ export function PeerContainer(props: PeerContainerProps) {
     })
     let iceCandidatesBuffer: RTCIceCandidate[] = []
     connectionsRef.current.set(peerConnectionIdRef.current, connection)
+    let localUfrag: string | null = null
+    let remoteUfrag: string | null = null
 
     updatePeer(peerConnectionIdRef.current, p => ({
       ...p,
@@ -124,9 +126,11 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendOffer][before] create offer`)
         const offer = await connection.createOffer()
+
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendOffer][after] create offer`, offer)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendOffer][before] set local description`, offer)
         await connection.setLocalDescription(offer)
+        localUfrag = extractUfrag(offer.sdp)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendOffer][after] set local description`, offer)
         sendSignalRef.current('offer', {
           senderId: selfConnectionIdRef.current,
@@ -143,6 +147,7 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][receiveOffer][before] set remote description`, offer)
         await connection.setRemoteDescription(offer)
+        remoteUfrag = extractUfrag(offer.sdp)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][receiveOffer][after] set remote description`, offer)
         logMessage('An offer received')
       } catch (error) {
@@ -157,6 +162,7 @@ export function PeerContainer(props: PeerContainerProps) {
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendAnswer][after] create answer`, answer)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendAnswer][before] set local description`, answer)
         await connection.setLocalDescription(answer)
+        localUfrag = extractUfrag(answer.sdp)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][sendAnswer][after] set local description`, answer)
         await addBufferedIceCandidates()
         sendSignalRef.current('answer', {
@@ -178,6 +184,7 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][receiveAnswer][before] set remote description`)
         await connection.setRemoteDescription(answer)
+        localUfrag = extractUfrag(answer.sdp)
         console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][receiveAnswer][before] set remove description`, answer)
         await addBufferedIceCandidates()
         logMessage('An answer received')
@@ -191,8 +198,14 @@ export function PeerContainer(props: PeerContainerProps) {
         if (connection.localDescription && connection.remoteDescription) {
           logMessage('Adding ICE candidate', candidate)
           console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][addIceCandidate][before] add ICE candidate`, candidate)
-          await connection.addIceCandidate(candidate)
-          console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][addIceCandidate][after] add ICE candidate`)
+          const candidateUfrag = extractCandidateUfrag(candidate.candidate)
+
+          if (candidateUfrag === remoteUfrag) {
+            await connection.addIceCandidate(candidate)
+            console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][addIceCandidate][after] add ICE candidate`)
+          } else {
+            console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][addIceCandidate][after] failed to add ICE candidate, stale connection`)
+          }
         } else {
           logMessage('Buffering ICE candidate', candidate)
           if (!bufferedCandidatesRef.current.has(peerConnectionIdRef.current)) {
@@ -238,6 +251,8 @@ export function PeerContainer(props: PeerContainerProps) {
       logMessage('Waiting for offer')
     }
 
+    const connections = connectionsRef.current
+
     return () => {
       updatePeer(peerConnectionIdRef.current, p => ({
         ...p,
@@ -254,10 +269,23 @@ export function PeerContainer(props: PeerContainerProps) {
       connection.onnegotiationneeded = null
       dataChannel.onopen = null
       dataChannel.onclose = null
+      if (connections) {
+        connections.delete(peerConnectionIdRef.current)
+      }
       dataChannel.close()
       connection.close()
     }
   }, [self, peerConnectionId, updatePeer, removePeer])
 
   return null
+}
+
+function extractUfrag(sdp: string = '') {
+  const ufragLine = sdp.match(/a=ice-ufrag:(.*)/);
+  return ufragLine ? ufragLine[1] : null;
+}
+
+function extractCandidateUfrag(candidate: string) {
+  const ufragLine = candidate.match(/ufrag\s+(\S+)/);
+  return ufragLine ? ufragLine[1] : null;
 }
