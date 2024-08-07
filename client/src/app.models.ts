@@ -15,6 +15,7 @@ export interface Room {
   name: string
   hostKey: string
   participants: Participant[]
+  updatedAt?: number
 }
 
 export interface JoinRoomSignal {

@@ -50,7 +50,7 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
   }, [username, roomKey, signaler, emit])
 
   useEffect(() => {
-    if (room?.key === room$?.key) {
+    if (room?.key === room$?.key && (room$?.updatedAt ?? 1) > (room?.updatedAt ?? 0)) {
       setRoom(room$)
     }
   }, [room, room$]);
