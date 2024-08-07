@@ -79,7 +79,10 @@ export class AppGateway implements OnGatewayDisconnect {
       payload: room,
     });
 
-    socket.emit('user', user);
+    socket.emit('joined', {
+      user,
+      room,
+    });
 
     console.log(user.key, room.participants.map(p => p.user.key))
 
