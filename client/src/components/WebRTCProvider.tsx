@@ -170,6 +170,8 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
       }
     }))
   }, [others])
+  const connectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map())
+  const bufferedCandidatesRef = useRef<Map<string, RTCIceCandidate[]>>(new Map())
 
   if (!contextValue) {
     return
@@ -182,6 +184,8 @@ export function WebRTCProvider(props: WebRTCProviderProps) {
           key={peer.connectionId}
           self={contextValue.self}
           peer={peer}
+          connectionsRef={connectionsRef}
+          bufferedCandidatesRef={bufferedCandidatesRef}
         />
       ))}
       {children}

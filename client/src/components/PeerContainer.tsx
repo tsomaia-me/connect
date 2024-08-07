@@ -1,5 +1,5 @@
 import { OfferSignal, Participant, SignalEvent } from '@/app.models'
-import { useEffect, useRef } from 'react'
+import { MutableRefObject, useEffect, useRef } from 'react';
 import { useSignalSender } from '@/components/shared/hooks'
 import { Peer, PeerEvent, useWebRTCContext } from '@/components/WebRTCProvider'
 import { useSignaler } from '@/components/SocketProvider'
@@ -7,10 +7,12 @@ import { useSignaler } from '@/components/SocketProvider'
 export interface PeerContainerProps {
   self: Participant
   peer: Peer
+  connectionsRef: MutableRefObject<Map<string, RTCPeerConnection>>
+  bufferedCandidatesRef: MutableRefObject<Map<string, RTCIceCandidate[]>>
 }
 
 export function PeerContainer(props: PeerContainerProps) {
-  const { self, peer } = props
+  const { self, peer, connectionsRef, bufferedCandidatesRef } = props
   const socket = useSignaler()
   const sendSignal = useSignalSender()
   const { iceServers, updatePeer, removePeer } = useWebRTCContext()
@@ -47,6 +49,7 @@ export function PeerContainer(props: PeerContainerProps) {
       id: 0,
     })
     let iceCandidatesBuffer: RTCIceCandidate[] = []
+    connectionsRef.current.set(peerConnectionIdRef.current, connection)
 
     updatePeer(peerConnectionIdRef.current, p => ({
       ...p,
@@ -105,13 +108,15 @@ export function PeerContainer(props: PeerContainerProps) {
     }
 
     async function addBufferedIceCandidates() {
-      if (iceCandidatesBuffer.length > 0) {
-        logMessage(`Adding ${iceCandidatesBuffer.length} buffered ICE candidates`)
-        for (const iceCandidate of iceCandidatesBuffer) {
+      const buffer = bufferedCandidatesRef.current.get(peerConnectionIdRef.current) ?? []
+
+      if (buffer.length > 0) {
+        logMessage(`Adding ${buffer.length} buffered ICE candidates`)
+        for (const iceCandidate of buffer) {
           await addIceCandidate(iceCandidate)
         }
 
-        iceCandidatesBuffer = [];
+        bufferedCandidatesRef.current.set(peerConnectionIdRef.current, [])
       }
     }
 
@@ -190,7 +195,11 @@ export function PeerContainer(props: PeerContainerProps) {
           console.log(`[${peerUsernameRef.current}][${peerConnectionIdRef.current}][PeerContainer][addIceCandidate][after] add ICE candidate`)
         } else {
           logMessage('Buffering ICE candidate', candidate)
-          iceCandidatesBuffer.push(candidate)
+          if (!bufferedCandidatesRef.current.has(peerConnectionIdRef.current)) {
+            bufferedCandidatesRef.current.set(peerConnectionIdRef.current, [])
+          }
+
+          bufferedCandidatesRef.current.get(peerConnectionIdRef.current)!.push(candidate)
         }
       } catch (error) {
         logError('Failed to add ICE candidate', error)
