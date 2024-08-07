@@ -38,16 +38,21 @@ export function DataSubscriptionContainer(props: DataSubscriptionContainerProps)
   useEffect(() => {
     if (!isJoinRequestSentRef.current) {
       signaler.on('user', user => {
+        console.log('user', user)
         setUser(user)
+        setIsJoined(true)
       })
       emit('join', { username, roomKey })
-      setIsJoined(true)
       console.log('[DataSubscriptionContainer] Joined room')
     }
   }, [username, roomKey, signaler, emit])
 
   return (
     <>
+      <p>{JSON.stringify(user)}</p>
+      <p>{JSON.stringify(room)}</p>
+      <p>{JSON.stringify(isJoined)}</p>
+      <p>{JSON.stringify(user && room && isJoined)}</p>
       {user && room && isJoined && (
         <WebRTCProvider
           user={user}
