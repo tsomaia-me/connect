@@ -123,7 +123,6 @@ export function PeerContainer(props: PeerContainerProps) {
     async function receiveOffer(offer: RTCSessionDescriptionInit) {
       try {
         await connection.setRemoteDescription(offer)
-        await addBufferedIceCandidates()
         logMessage('An offer received')
       } catch (error) {
         logError('Failed to receive an answer', error)
@@ -134,6 +133,7 @@ export function PeerContainer(props: PeerContainerProps) {
       try {
         const answer = await connection.createAnswer()
         await connection.setLocalDescription(answer)
+        await addBufferedIceCandidates()
         sendSignalRef.current('answer', {
           senderId: self.connectionId,
           receiverId: peerConnectionId,
@@ -157,7 +157,7 @@ export function PeerContainer(props: PeerContainerProps) {
 
     async function addIceCandidate(candidate: RTCIceCandidate) {
       try {
-        if (connection.remoteDescription) {
+        if (connection.localDescription && connection.remoteDescription) {
           logMessage('Adding ICE candidate', candidate)
           await connection.addIceCandidate(candidate)
         } else {
