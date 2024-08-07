@@ -11,7 +11,6 @@ import { JoinRoomSignal, OfferSignal, Room, User } from './app.models';
 import { RoomEvent, SocketEvent } from './app.types';
 import { filter, map, startWith, Subject } from 'rxjs';
 import { toSocketEvent, toSocketSuccessResponse } from './app.utils';
-import { toProtectedSerializedRoom } from './app.serializers';
 
 @WebSocketGateway({ cors: true })
 export class AppGateway implements OnGatewayDisconnect {
